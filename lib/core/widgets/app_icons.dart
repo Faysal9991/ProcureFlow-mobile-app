@@ -1,0 +1,51 @@
+import 'package:flutter/widgets.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+class AppIcons {
+  const AppIcons._();
+
+  static const IconData add = LucideIcons.plus;
+  static const IconData approval = LucideIcons.badgeCheck;
+  static const IconData arrowForward = LucideIcons.arrowRight;
+  static const IconData bell = LucideIcons.bell;
+  static const IconData bellActive = LucideIcons.bellDot;
+  static const IconData calendar = LucideIcons.calendar;
+  static const IconData check = LucideIcons.check;
+  static const IconData checkAll = LucideIcons.checkCheck;
+  static const IconData chevronDown = LucideIcons.chevronDown;
+  static const IconData chevronRight = LucideIcons.chevronRight;
+  static const IconData circle = LucideIcons.circle;
+  static const IconData circleCheck = LucideIcons.circleCheck;
+  static const IconData circlePause = LucideIcons.circlePause;
+  static const IconData circleX = LucideIcons.circleX;
+  static const IconData cloudCheck = LucideIcons.cloudCheck;
+  static const IconData cloudOff = LucideIcons.cloudOff;
+  static const IconData dashboard = LucideIcons.layoutDashboard;
+  static const IconData department = LucideIcons.building2;
+  static const IconData description = LucideIcons.notebookText;
+  static const IconData externalLink = LucideIcons.externalLink;
+  static const IconData eye = LucideIcons.eye;
+  static const IconData eyeOff = LucideIcons.eyeOff;
+  static const IconData flag = LucideIcons.flag;
+  static const IconData history = LucideIcons.history;
+  static const IconData inbox = LucideIcons.inbox;
+  static const IconData info = LucideIcons.info;
+  static const IconData item = LucideIcons.package;
+  static const IconData list = LucideIcons.clipboardList;
+  static const IconData lock = LucideIcons.lockKeyhole;
+  static const IconData login = LucideIcons.logIn;
+  static const IconData logout = LucideIcons.logOut;
+  static const IconData mail = LucideIcons.mail;
+  static const IconData money = LucideIcons.handCoins;
+  static const IconData order = LucideIcons.receiptText;
+  static const IconData profile = LucideIcons.user;
+  static const IconData send = LucideIcons.send;
+  static const IconData store = LucideIcons.store;
+  static const IconData sync = LucideIcons.refreshCw;
+  static const IconData title = LucideIcons.type;
+  static const IconData trash = LucideIcons.trash2;
+  static const IconData user = LucideIcons.user;
+  static const IconData vendors = LucideIcons.store;
+  static const IconData compare = LucideIcons.arrowLeftRight;
+  static const IconData x = LucideIcons.x;
+}
