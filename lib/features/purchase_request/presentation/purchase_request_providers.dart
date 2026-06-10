@@ -14,7 +14,6 @@ final purchaseRequestRepositoryProvider = Provider<PurchaseRequestRepository>((
     dao: ref.watch(procurementDaoProvider),
     api: ref.watch(procurementApiProvider),
     config: ref.watch(appConfigProvider),
-    connectivity: ref.watch(connectivityServiceProvider),
     syncService: ref.watch(syncServiceProvider),
   );
 });

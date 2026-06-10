@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/app_components.dart';
-import 'auth_controller.dart';
+import '../../auth/presentation/auth_controller.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key, this.showBottomNavigation = true});
@@ -14,6 +14,9 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(authControllerProvider).session;
+    final name = session?.userName ?? 'User';
+    final department = session?.departmentName;
+
     return AppScaffold(
       title: 'Profile',
       showBottomNavigation: showBottomNavigation,
@@ -24,14 +27,12 @@ class ProfileScreen extends ConsumerWidget {
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 28,
+                  radius: 30,
                   backgroundColor: Theme.of(
                     context,
                   ).colorScheme.primary.withValues(alpha: 0.12),
                   child: Text(
-                    (session?.userName.isNotEmpty ?? false)
-                        ? session!.userName.substring(0, 1).toUpperCase()
-                        : 'U',
+                    name.isNotEmpty ? name.substring(0, 1).toUpperCase() : 'U',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w800,
@@ -43,13 +44,9 @@ class ProfileScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        session?.userName ?? 'User',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
+                      Text(name, style: Theme.of(context).textTheme.titleLarge),
                       const SizedBox(height: 4),
                       Text(session?.email ?? ''),
-                      Text(session?.companyName ?? ''),
                     ],
                   ),
                 ),
@@ -57,35 +54,37 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const AppActionTile(
-            icon: AppIcons.vendors,
-            title: 'Vendor List',
-            subtitle: 'Supplier records and contacts',
-            route: '/vendors',
-            margin: EdgeInsets.only(bottom: 10),
-          ),
-          const AppActionTile(
-            icon: AppIcons.compare,
-            title: 'Quotation Compare',
-            subtitle: 'Compare vendor proposals',
-            route: '/quotations',
-            margin: EdgeInsets.only(bottom: 10),
-          ),
-          const AppActionTile(
-            icon: AppIcons.order,
-            title: 'Purchase Orders',
-            subtitle: 'Issued procurement orders',
-            route: '/purchase-orders',
-            margin: EdgeInsets.only(bottom: 10),
-          ),
-          const AppActionTile(
-            icon: AppIcons.sync,
-            title: 'Offline Sync',
-            subtitle: 'Pending sync and retry logs',
-            route: '/sync',
-            margin: EdgeInsets.only(bottom: 10),
+          AppSectionCard(
+            child: Column(
+              children: [
+                AppInfoRow(
+                  icon: AppIcons.profile,
+                  label: 'Role',
+                  value: session?.primaryRole ?? 'employee',
+                ),
+                AppInfoRow(
+                  icon: AppIcons.store,
+                  label: 'Company',
+                  value: session?.companyName ?? 'Company',
+                ),
+                AppInfoRow(
+                  icon: AppIcons.department,
+                  label: 'Department',
+                  value: (department == null || department.isEmpty)
+                      ? 'General'
+                      : department,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
+          AppActionTile(
+            icon: AppIcons.lock,
+            title: 'Change Password',
+            subtitle: 'Update your account password',
+            route: '/change-password',
+            margin: const EdgeInsets.only(bottom: 10),
+          ),
           FilledButton.icon(
             onPressed: () => ref.read(authControllerProvider.notifier).logout(),
             icon: const Icon(AppIcons.logout),

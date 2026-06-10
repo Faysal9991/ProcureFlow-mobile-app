@@ -2,13 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/approval/presentation/approval_inbox_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
+import '../../features/auth/presentation/change_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/splash_screen.dart';
+import '../../features/budget/presentation/budget_details_screen.dart';
+import '../../features/budget/presentation/budget_form_screen.dart';
+import '../../features/budget/presentation/budget_list_screen.dart';
+import '../../features/budget/presentation/budget_transactions_screen.dart';
+import '../../features/invoice/presentation/create_invoice_screen.dart';
+import '../../features/invoice/presentation/invoice_details_screen.dart';
+import '../../features/invoice/presentation/invoice_edit_screen.dart';
+import '../../features/invoice/presentation/invoice_list_screen.dart';
+import '../../features/invoice/presentation/invoice_payment_list_screen.dart';
+import '../../features/invoice/presentation/payment_details_screen.dart';
+import '../../features/invoice/presentation/record_payment_screen.dart';
+import '../../features/purchase_order/presentation/create_purchase_order_screen.dart';
+import '../../features/purchase_order/presentation/purchase_order_details_screen.dart';
+import '../../features/purchase_order/presentation/purchase_order_edit_screen.dart';
 import '../../features/purchase_order/presentation/purchase_order_list_screen.dart';
-import '../../features/purchase_request/presentation/create_purchase_request_screen.dart';
-import '../../features/purchase_request/presentation/request_details_screen.dart';
-import '../../features/quotation/presentation/quotation_compare_screen.dart';
-import '../../features/sync/presentation/offline_sync_status_screen.dart';
+import '../../features/purchase_request/presentation/approval_history_screen.dart';
+import '../../features/purchase_request/presentation/my_requests_screen.dart';
+import '../../features/purchase_request/presentation/purchase_request_details_screen.dart';
+import '../../features/purchase_request/presentation/purchase_request_form_screen.dart';
+import '../../features/reports/domain/report_entity.dart';
+import '../../features/reports/presentation/report_screen.dart';
+import '../../features/reports/presentation/reports_home_screen.dart';
+import '../../features/rfq/presentation/quotation_details_screen.dart';
+import '../../features/rfq/presentation/quotation_entry_screen.dart';
+import '../../features/rfq/presentation/rfq_comparison_screen.dart';
+import '../../features/rfq/presentation/rfq_create_screen.dart';
+import '../../features/rfq/presentation/rfq_details_screen.dart';
+import '../../features/rfq/presentation/rfq_list_screen.dart';
+import '../../features/rfq/presentation/rfq_vendor_assignment_screen.dart';
+import '../../features/vendor/presentation/vendor_details_screen.dart';
+import '../../features/vendor/presentation/vendor_form_screen.dart';
 import '../../features/vendor/presentation/vendor_list_screen.dart';
 import 'main_tab_shell.dart';
 
@@ -16,25 +45,44 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authControllerProvider);
 
   return GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: '/splash',
     redirect: (context, state) {
-      final isLogin = state.uri.path == '/login';
-      if (authState.status == AuthStatus.unknown) {
-        return isLogin ? null : '/login';
+      final path = state.uri.path;
+      final isSplash = path == '/splash';
+      final isLogin = path == '/login';
+      final isChangePassword = path == '/change-password';
+
+      if (authState.isLoading) {
+        return isSplash || isLogin || isChangePassword ? null : '/splash';
       }
+
       if (!authState.isAuthenticated) {
+        if (authState.requiresPasswordChange) {
+          return isChangePassword ? null : '/change-password';
+        }
         return isLogin ? null : '/login';
       }
-      if (isLogin) {
+
+      if (isSplash || isLogin || isChangePassword) {
         return '/dashboard';
       }
       return null;
     },
     routes: [
       GoRoute(
+        path: '/splash',
+        pageBuilder: (context, state) =>
+            _fadeSlidePage(state: state, child: const SplashScreen()),
+      ),
+      GoRoute(
         path: '/login',
         pageBuilder: (context, state) =>
             _fadeSlidePage(state: state, child: const LoginScreen()),
+      ),
+      GoRoute(
+        path: '/change-password',
+        pageBuilder: (context, state) =>
+            _fadeSlidePage(state: state, child: const ChangePasswordScreen()),
       ),
       GoRoute(
         path: '/dashboard',
@@ -44,33 +92,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/requests/new',
-        pageBuilder: (context, state) => _fadeSlidePage(
-          state: state,
-          child: const CreatePurchaseRequestScreen(),
-        ),
-      ),
-      GoRoute(
-        path: '/requests',
+        path: '/notifications',
         pageBuilder: (context, state) => _mainTabPage(
           state: state,
           child: const MainTabShell(initialIndex: 1),
         ),
       ),
       GoRoute(
-        path: '/requests/:localId',
-        pageBuilder: (context, state) => _fadeSlidePage(
+        path: '/profile',
+        pageBuilder: (context, state) => _mainTabPage(
           state: state,
-          child: RequestDetailsScreen(
-            localId: state.pathParameters['localId']!,
-          ),
+          child: const MainTabShell(initialIndex: 2),
         ),
       ),
       GoRoute(
         path: '/approvals',
-        pageBuilder: (context, state) => _mainTabPage(
+        pageBuilder: (context, state) =>
+            _fadeSlidePage(state: state, child: const ApprovalInboxScreen()),
+      ),
+      GoRoute(
+        path: '/approvals/:requestId',
+        pageBuilder: (context, state) => _fadeSlidePage(
           state: state,
-          child: const MainTabShell(initialIndex: 2),
+          child: PurchaseRequestDetailsScreen(
+            requestId: state.pathParameters['requestId'] ?? '',
+            approvalMode: true,
+          ),
         ),
       ),
       GoRoute(
@@ -79,9 +126,75 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             _fadeSlidePage(state: state, child: const VendorListScreen()),
       ),
       GoRoute(
-        path: '/quotations',
+        path: '/vendors/new',
         pageBuilder: (context, state) =>
-            _fadeSlidePage(state: state, child: const QuotationCompareScreen()),
+            _fadeSlidePage(state: state, child: const VendorFormScreen()),
+      ),
+      GoRoute(
+        path: '/vendors/:id',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: VendorDetailsScreen(
+            vendorId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/vendors/:id/edit',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: VendorFormScreen(vendorId: state.pathParameters['id'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: '/rfqs',
+        pageBuilder: (context, state) =>
+            _fadeSlidePage(state: state, child: const RfqListScreen()),
+      ),
+      GoRoute(
+        path: '/rfqs/new',
+        pageBuilder: (context, state) =>
+            _fadeSlidePage(state: state, child: const RfqCreateScreen()),
+      ),
+      GoRoute(
+        path: '/rfqs/:id',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: RfqDetailsScreen(rfqId: state.pathParameters['id'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: '/rfqs/:id/comparison',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: RfqComparisonScreen(rfqId: state.pathParameters['id'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: '/rfqs/:id/vendors',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: RfqVendorAssignmentScreen(
+            rfqId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/rfqs/:id/quotations',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: QuotationEntryScreen(rfqId: state.pathParameters['id'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: '/rfqs/:id/quotations/:quotationId',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: QuotationDetailsScreen(
+            rfqId: state.pathParameters['id'] ?? '',
+            quotationId: state.pathParameters['quotationId'] ?? '',
+          ),
+        ),
       ),
       GoRoute(
         path: '/purchase-orders',
@@ -91,24 +204,175 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/notifications',
-        pageBuilder: (context, state) => _mainTabPage(
-          state: state,
-          child: const MainTabShell(initialIndex: 3),
-        ),
-      ),
-      GoRoute(
-        path: '/sync',
+        path: '/purchase-orders/new',
         pageBuilder: (context, state) => _fadeSlidePage(
           state: state,
-          child: const OfflineSyncStatusScreen(),
+          child: CreatePurchaseOrderScreen(
+            rfqId: state.uri.queryParameters['rfqId'],
+            quotationId: state.uri.queryParameters['quotationId'],
+          ),
         ),
       ),
       GoRoute(
-        path: '/profile',
-        pageBuilder: (context, state) => _mainTabPage(
+        path: '/purchase-orders/:id',
+        pageBuilder: (context, state) => _fadeSlidePage(
           state: state,
-          child: const MainTabShell(initialIndex: 4),
+          child: PurchaseOrderDetailsScreen(
+            orderId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/purchase-orders/:id/edit',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: PurchaseOrderEditScreen(
+            orderId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/invoices',
+        pageBuilder: (context, state) =>
+            _fadeSlidePage(state: state, child: const InvoiceListScreen()),
+      ),
+      GoRoute(
+        path: '/invoices/new',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: CreateInvoiceScreen(
+            purchaseOrderId: state.uri.queryParameters['purchaseOrderId'],
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/invoices/:id/payments',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: InvoicePaymentListScreen(
+            invoiceId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/invoices/:id/payments/new',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: RecordPaymentScreen(
+            invoiceId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/invoices/:id',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: InvoiceDetailsScreen(
+            invoiceId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/invoices/:id/edit',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: InvoiceEditScreen(invoiceId: state.pathParameters['id'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: '/payments/:id',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: PaymentDetailsScreen(
+            paymentId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/budgets',
+        pageBuilder: (context, state) =>
+            _fadeSlidePage(state: state, child: const BudgetListScreen()),
+      ),
+      GoRoute(
+        path: '/budgets/new',
+        pageBuilder: (context, state) =>
+            _fadeSlidePage(state: state, child: const BudgetFormScreen()),
+      ),
+      GoRoute(
+        path: '/budgets/:id',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: BudgetDetailsScreen(
+            budgetId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/budgets/:id/edit',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: BudgetFormScreen(budgetId: state.pathParameters['id'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: '/budgets/:id/transactions',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: BudgetTransactionsScreen(
+            budgetId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/reports',
+        pageBuilder: (context, state) =>
+            _fadeSlidePage(state: state, child: const ReportsHomeScreen()),
+      ),
+      for (final reportType in ReportType.values)
+        GoRoute(
+          path: reportType.route,
+          pageBuilder: (context, state) => _fadeSlidePage(
+            state: state,
+            child: ReportScreen(type: reportType),
+          ),
+        ),
+      GoRoute(
+        path: '/requests',
+        pageBuilder: (context, state) =>
+            _fadeSlidePage(state: state, child: const MyRequestsScreen()),
+      ),
+      GoRoute(
+        path: '/requests/new',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: const PurchaseRequestFormScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/requests/:id',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: PurchaseRequestDetailsScreen(
+            requestId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/requests/:id/edit',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: PurchaseRequestFormScreen(
+            requestId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/requests/:id/approval-history',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          state: state,
+          child: ApprovalHistoryScreen(
+            requestId: state.pathParameters['id'] ?? '',
+          ),
         ),
       ),
     ],

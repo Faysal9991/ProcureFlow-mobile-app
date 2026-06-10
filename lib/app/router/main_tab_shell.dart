@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/widgets/app_scaffold.dart';
-import '../../features/approval/presentation/approval_inbox_screen.dart';
-import '../../features/auth/presentation/profile_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
-import '../../features/purchase_request/presentation/my_requests_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
 
 class MainTabShell extends StatelessWidget {
   const MainTabShell({super.key, required this.initialIndex});
@@ -51,8 +49,6 @@ class MainTabShell extends StatelessWidget {
 
 const _tabScreens = [
   DashboardScreen(showBottomNavigation: false),
-  MyRequestsScreen(showBottomNavigation: false),
-  ApprovalInboxScreen(showBottomNavigation: false),
   NotificationsScreen(showBottomNavigation: false),
   ProfileScreen(showBottomNavigation: false),
 ];

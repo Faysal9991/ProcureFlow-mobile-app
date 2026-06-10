@@ -11,7 +11,62 @@ import 'package:procurement_management/core/sync/sync_status.dart';
 
 class _FakeProcurementApi implements ProcurementApi {
   @override
-  Future<PurchaseRequestSyncResponseDto> createPurchaseRequest(
+  Future<void> approveRequest(
+    String requestId,
+    ApprovalDecisionRequestDto request,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> changePassword(ChangePasswordRequestDto request) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseRequestDto> createPurchaseRequest(
+    PurchaseRequestPayloadDto request,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseRequestDto> cancelPurchaseRequest(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<ApprovalHistoryResponseDto> getPurchaseRequestApprovalHistory(
+    String id,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseRequestDto> getPurchaseRequest(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseRequestPageDto> getMyPurchaseRequests(
+    String? search,
+    String? status,
+    String? priority,
+    String? dateFrom,
+    String? dateTo,
+    int page,
+    int limit,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseRequestDto> submitPurchaseRequest(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseRequestSyncResponseDto> syncCreatePurchaseRequest(
     PurchaseRequestSyncRequestDto request,
   ) async {
     return PurchaseRequestSyncResponseDto(
@@ -22,7 +77,197 @@ class _FakeProcurementApi implements ProcurementApi {
   }
 
   @override
-  Future<List<VendorDto>> getVendors(String companyId) async => [];
+  Future<PurchaseRequestDto> updatePurchaseRequest(
+    String id,
+    PurchaseRequestPayloadDto request,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<VendorDto> createVendor(VendorPayloadDto request) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteVendor(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<VendorDto> getVendor(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<VendorPageDto> getVendors(
+    String? search,
+    String? status,
+    int page,
+    int limit,
+  ) async {
+    return VendorPageDto(items: const [], page: page, limit: limit, total: 0);
+  }
+
+  @override
+  Future<VendorDto> updateVendor(String id, VendorPayloadDto request) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<RfqDto> assignRfqVendors(
+    String id,
+    AssignRfqVendorsPayloadDto request,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<RfqDto> createRfq(CreateRfqPayloadDto request) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<QuotationDto> createRfqQuotation(
+    String id,
+    CreateQuotationPayloadDto request,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<EligiblePurchaseRequestPageDto> getEligiblePurchaseRequestsForRfq(
+    int page,
+    int limit,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<RfqDto> getRfq(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<RfqPageDto> getRfqs(
+    String? search,
+    String? status,
+    String? purchaseRequestId,
+    int page,
+    int limit,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<RfqDto> openRfq(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<RfqComparisonDto> getRfqComparison(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<RfqDto> selectRfqQuotation(
+    String id,
+    SelectedQuotationPayloadDto request,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseOrderDto> cancelPurchaseOrder(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseOrderDto> closePurchaseOrder(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseOrderDto> createPurchaseOrder(
+    CreatePurchaseOrderPayloadDto request,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseOrderDto> getPurchaseOrder(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseOrderPageDto> getPurchaseOrders(
+    String? search,
+    String? status,
+    String? vendorId,
+    String? purchaseRequestId,
+    String? dateFrom,
+    String? dateTo,
+    int page,
+    int limit,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseOrderDto> issuePurchaseOrder(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseOrderDto> receivePurchaseOrder(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PurchaseOrderDto> updatePurchaseOrder(
+    String id,
+    UpdatePurchaseOrderPayloadDto request,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<DashboardSummaryDto> getDashboardSummary() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<ApprovalInboxPageDto> getApprovalInbox(
+    String? search,
+    String? priority,
+    String? departmentId,
+    String? dateFrom,
+    String? dateTo,
+    int page,
+    int limit,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthUserDto> getCurrentUser() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<NotificationPageDto> getNotifications(int page, int limit) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<NotificationUnreadCountDto> getNotificationUnreadCount() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PermissionsResponseDto> getPermissions() {
+    throw UnimplementedError();
+  }
 
   @override
   Future<LoginResponseDto> login(LoginRequestDto request) {
@@ -30,10 +275,30 @@ class _FakeProcurementApi implements ProcurementApi {
   }
 
   @override
-  Future<void> submitApprovalAction(
-    String serverId,
-    ApprovalActionRequestDto request,
-  ) async {}
+  Future<void> logout() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> markAllNotificationsRead() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> markNotificationRead(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> rejectRequest(
+    String requestId,
+    ApprovalDecisionRequestDto request,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {

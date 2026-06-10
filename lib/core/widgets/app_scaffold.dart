@@ -192,17 +192,8 @@ class AppSmoothScreenSwitcher extends StatelessWidget {
 }
 
 int appBottomNavSelectedIndex(String path) {
-  if (path.startsWith('/requests')) return 1;
-  if (path.startsWith('/approvals')) return 2;
-  if (path.startsWith('/notifications')) return 3;
-
-  if (path.startsWith('/profile') ||
-      path.startsWith('/vendors') ||
-      path.startsWith('/quotations') ||
-      path.startsWith('/purchase-orders') ||
-      path.startsWith('/sync')) {
-    return 4;
-  }
+  if (path.startsWith('/notifications')) return 1;
+  if (path.startsWith('/profile')) return 2;
 
   return 0;
 }
@@ -211,25 +202,13 @@ const appBottomTabs = [
   AppBottomTab(
     icon: AppIcons.dashboard,
     selectedIcon: AppIcons.dashboard,
-    label: 'Dashboard',
+    label: 'Home',
     route: '/dashboard',
-  ),
-  AppBottomTab(
-    icon: AppIcons.list,
-    selectedIcon: AppIcons.list,
-    label: 'Requests',
-    route: '/requests',
-  ),
-  AppBottomTab(
-    icon: AppIcons.approval,
-    selectedIcon: AppIcons.approval,
-    label: 'Approvals',
-    route: '/approvals',
   ),
   AppBottomTab(
     icon: AppIcons.bell,
     selectedIcon: AppIcons.bellActive,
-    label: 'Alerts',
+    label: 'Notifications',
     route: '/notifications',
   ),
   AppBottomTab(

@@ -1,13 +1,19 @@
-import '../../purchase_request/domain/purchase_request_entity.dart';
 import 'purchase_order_entity.dart';
 
 abstract interface class PurchaseOrderRepository {
-  Stream<List<PurchaseOrderEntity>> watchByCompany(String companyId);
+  Future<PurchaseOrderPage> getPurchaseOrders(PurchaseOrderFilters filters);
 
-  Future<List<PurchaseOrderEntity>> getByCompany(String companyId);
+  Future<PurchaseOrder> create(CreatePurchaseOrderPayload payload);
 
-  Future<void> createFromRequest({
-    required PurchaseRequestEntity request,
-    required String createdById,
-  });
+  Future<PurchaseOrder?> getById(String id);
+
+  Future<PurchaseOrder> update(String id, UpdatePurchaseOrderPayload payload);
+
+  Future<PurchaseOrder> issue(String id);
+
+  Future<PurchaseOrder> receive(String id);
+
+  Future<PurchaseOrder> cancel(String id);
+
+  Future<PurchaseOrder> close(String id);
 }

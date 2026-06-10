@@ -3,7 +3,8 @@ enum SyncStatus {
   pendingUpdate('pending_update', 'Pending update'),
   pendingDelete('pending_delete', 'Pending delete'),
   synced('synced', 'Synced'),
-  syncFailed('sync_failed', 'Sync failed');
+  syncFailed('sync_failed', 'Sync failed'),
+  conflict('conflict', 'Conflict');
 
   const SyncStatus(this.storageValue, this.label);
 

@@ -5,6 +5,7 @@ class AppIcons {
   const AppIcons._();
 
   static const IconData add = LucideIcons.plus;
+  static const IconData plus = LucideIcons.plus;
   static const IconData approval = LucideIcons.badgeCheck;
   static const IconData arrowForward = LucideIcons.arrowRight;
   static const IconData bell = LucideIcons.bell;
@@ -40,6 +41,10 @@ class AppIcons {
   static const IconData order = LucideIcons.receiptText;
   static const IconData profile = LucideIcons.user;
   static const IconData send = LucideIcons.send;
+  static const IconData search = LucideIcons.search;
+  static const IconData upload = LucideIcons.upload;
+  static const IconData download = LucideIcons.download;
+  static const IconData file = LucideIcons.fileText;
   static const IconData store = LucideIcons.store;
   static const IconData sync = LucideIcons.refreshCw;
   static const IconData title = LucideIcons.type;

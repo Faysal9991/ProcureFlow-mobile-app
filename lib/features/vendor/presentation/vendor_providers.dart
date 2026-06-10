@@ -7,13 +7,17 @@ import '../domain/vendor_entity.dart';
 import '../domain/vendor_repository.dart';
 
 final vendorRepositoryProvider = Provider<VendorRepository>((ref) {
-  return VendorRepositoryImpl(ref.watch(procurementDaoProvider));
+  return VendorRepositoryImpl(
+    dao: ref.watch(procurementDaoProvider),
+    api: ref.watch(procurementApiProvider),
+    config: ref.watch(appConfigProvider),
+  );
 });
 
-final vendorsProvider = StreamProvider.autoDispose<List<VendorEntity>>((ref) {
+final vendorsProvider = FutureProvider.autoDispose<List<VendorEntity>>((ref) {
   final session = ref.watch(authControllerProvider).session;
   if (session == null) {
-    return const Stream.empty();
+    return const [];
   }
-  return ref.watch(vendorRepositoryProvider).watchByCompany(session.companyId);
+  return ref.watch(vendorRepositoryProvider).getByCompany(session.companyId);
 });
