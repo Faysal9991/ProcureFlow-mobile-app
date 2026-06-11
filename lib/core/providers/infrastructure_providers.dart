@@ -72,9 +72,9 @@ final dioProvider = Provider<Dio>((ref) {
           printRequestHeaders: false,
           printRequestData: false,
           printResponseHeaders: false,
-          printResponseData: false,
+          printResponseData: true,
           printErrorHeaders: false,
-          printErrorData: false,
+          printErrorData: true,
           printResponseMessage: true,
           printErrorMessage: true,
           printResponseTime: true,
@@ -113,10 +113,13 @@ final syncServiceProvider = Provider<SyncService>((ref) {
 });
 
 final deviceTokenServiceProvider = Provider<DeviceTokenService>((ref) {
-  return DeviceTokenService(
+  final service = DeviceTokenService(
     api: ref.watch(procurementApiProvider),
     config: ref.watch(appConfigProvider),
+    storage: ref.watch(secureSessionStorageProvider),
   );
+  ref.onDispose(service.dispose);
+  return service;
 });
 
 final notificationSocketServiceProvider = Provider<NotificationSocketService>((

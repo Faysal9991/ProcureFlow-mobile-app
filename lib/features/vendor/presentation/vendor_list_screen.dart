@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/status_chip.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../domain/vendor_entity.dart';
 import 'vendor_controller.dart';
 import 'vendor_state.dart';
@@ -37,16 +39,19 @@ class _VendorListScreenState extends ConsumerState<VendorListScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(vendorControllerProvider);
+    final session = ref.watch(authControllerProvider).session;
 
     return AppScaffold(
       title: 'Vendors',
       showBottomNavigation: widget.showBottomNavigation,
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('createVendorButton'),
-        onPressed: () => context.push('/vendors/new'),
-        icon: const Icon(AppIcons.add),
-        label: const Text('Create'),
-      ),
+      floatingActionButton: PermissionPolicy.canCreateVendor(session)
+          ? FloatingActionButton.extended(
+              key: const Key('createVendorButton'),
+              onPressed: () => context.push('/vendors/new'),
+              icon: const Icon(AppIcons.add),
+              label: const Text('New Vendor'),
+            )
+          : null,
       child: RefreshIndicator(
         onRefresh: _load,
         child: AppScreenListView(

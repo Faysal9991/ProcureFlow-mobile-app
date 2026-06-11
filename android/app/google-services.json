@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "578746385191",
+    "project_id": "procureflow-faysal",
+    "storage_bucket": "procureflow-faysal.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:578746385191:android:de2f21d4d1d8860d791f02",
+        "android_client_info": {
+          "package_name": "com.procurement_management_faysal.bd"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEmyntaOrytZ9bPxLxQfMrd_lPd-0GtjE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:578746385191:android:608ff2503bf905b8791f02",
+        "android_client_info": {
+          "package_name": "com.procurementfaysal.bd"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEmyntaOrytZ9bPxLxQfMrd_lPd-0GtjE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

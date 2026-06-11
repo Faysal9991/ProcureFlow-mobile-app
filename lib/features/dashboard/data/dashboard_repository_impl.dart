@@ -37,63 +37,254 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
   Future<DashboardSummary> _mockSummary(AuthSession session) async {
     final requests = await _dao.getPurchaseRequests(session.companyId);
+    final rfqs = await _dao.getRfqs(session.companyId);
     final orders = await _dao.getPurchaseOrders(session.companyId);
+    final invoices = await _dao.getInvoices(session.companyId);
+    final payments = await _dao.getPayments(session.companyId);
+    final budgets = await _dao.getBudgets(session.companyId);
     final notifications = await _dao.getNotifications(
       session.companyId,
       limit: 5,
     );
-    final pendingApprovals = requests
-        .where((request) => request.status == 'submitted')
+    final pendingSync = await _dao.countPendingSync(session.companyId);
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month);
+    final nextMonth = DateTime(now.year, now.month + 1);
+    final pendingApprovals = requests.where(_isSubmitted).length;
+    final approvedToday = requests
+        .where(
+          (request) =>
+              _status(request.status) == 'APPROVED' &&
+              _sameDate(request.updatedAt, now),
+        )
         .length;
     final totalSpend = orders.fold<double>(
       0,
       (sum, order) => sum + order.totalAmount,
     );
+    final monthlySpend = payments
+        .where(
+          (payment) =>
+              !payment.paymentDate.isBefore(monthStart) &&
+              payment.paymentDate.isBefore(nextMonth),
+        )
+        .fold<double>(0, (sum, payment) => sum + payment.amount);
+    final dueAmount = invoices.fold<double>(
+      0,
+      (sum, invoice) => sum + invoice.dueAmount,
+    );
 
     return DashboardSummary(
       cards: [
         DashboardSummaryCard(
-          key: 'my_requests',
-          label: 'My Requests',
-          value: requests.length.toString(),
+          key: 'my_drafts',
+          label: 'My Drafts',
+          value: requests
+              .where((request) => _status(request.status) == 'DRAFT')
+              .length
+              .toString(),
           requiredPermissions: const ['purchase_requests.view'],
+        ),
+        DashboardSummaryCard(
+          key: 'submitted_requests',
+          label: 'Submitted',
+          value: requests.where(_isSubmitted).length.toString(),
+          requiredPermissions: const ['purchase_requests.view'],
+        ),
+        DashboardSummaryCard(
+          key: 'approved_requests',
+          label: 'Approved',
+          value: requests
+              .where((request) => _status(request.status) == 'APPROVED')
+              .length
+              .toString(),
+          requiredPermissions: const ['purchase_requests.view'],
+        ),
+        DashboardSummaryCard(
+          key: 'rejected_requests',
+          label: 'Rejected',
+          value: requests
+              .where((request) => _status(request.status) == 'REJECTED')
+              .length
+              .toString(),
+          requiredPermissions: const ['purchase_requests.view'],
+        ),
+        DashboardSummaryCard(
+          key: 'pending_sync',
+          label: 'Pending Sync',
+          value: pendingSync.toString(),
+          requiredPermissions: const ['purchase_requests.create'],
         ),
         DashboardSummaryCard(
           key: 'pending_approvals',
           label: 'Pending Approvals',
           value: pendingApprovals.toString(),
           requiredPermissions: const [
-            'approvals.manage',
+            'approvals.view',
             'purchase_requests.approve',
           ],
         ),
         DashboardSummaryCard(
-          key: 'purchase_orders',
-          label: 'Purchase Orders',
-          value: orders.length.toString(),
+          key: 'approved_today',
+          label: 'Approved Today',
+          value: approvedToday.toString(),
+          requiredPermissions: const [
+            'approvals.view',
+            'purchase_requests.approve',
+          ],
+        ),
+        DashboardSummaryCard(
+          key: 'rejected',
+          label: 'Rejected',
+          value: requests
+              .where((request) => _status(request.status) == 'REJECTED')
+              .length
+              .toString(),
+          requiredPermissions: const [
+            'approvals.view',
+            'purchase_requests.approve',
+          ],
+        ),
+        DashboardSummaryCard(
+          key: 'high_priority',
+          label: 'High Priority',
+          value: requests
+              .where(
+                (request) =>
+                    _isSubmitted(request) &&
+                    (_status(request.priority) == 'HIGH' ||
+                        _status(request.priority) == 'URGENT'),
+              )
+              .length
+              .toString(),
+          requiredPermissions: const [
+            'approvals.view',
+            'purchase_requests.approve',
+          ],
+        ),
+        DashboardSummaryCard(
+          key: 'open_rfqs',
+          label: 'Open RFQs',
+          value: rfqs
+              .where((rfq) => _status(rfq.status) == 'OPEN')
+              .length
+              .toString(),
+          requiredPermissions: const ['rfq.view', 'rfq.manage'],
+        ),
+        DashboardSummaryCard(
+          key: 'quotations_received',
+          label: 'Quotations Received',
+          value: rfqs
+              .fold<int>(0, (sum, rfq) => sum + rfq.quotationCount)
+              .toString(),
+          requiredPermissions: const ['rfq.view', 'rfq.manage'],
+        ),
+        DashboardSummaryCard(
+          key: 'draft_pos',
+          label: 'Draft POs',
+          value: orders
+              .where((order) => _status(order.status) == 'DRAFT')
+              .length
+              .toString(),
           requiredPermissions: const [
             'purchase_orders.view',
             'purchase_orders.create',
             'purchase_orders.manage',
           ],
         ),
-        const DashboardSummaryCard(
-          key: 'invoices',
-          label: 'Invoices',
-          value: '0',
-          requiredPermissions: ['invoices.view', 'finance.view'],
+        DashboardSummaryCard(
+          key: 'issued_pos',
+          label: 'Issued POs',
+          value: orders
+              .where((order) => _status(order.status) == 'ISSUED')
+              .length
+              .toString(),
+          requiredPermissions: const [
+            'purchase_orders.view',
+            'purchase_orders.create',
+            'purchase_orders.manage',
+          ],
+        ),
+        DashboardSummaryCard(
+          key: 'received_pos',
+          label: 'Received POs',
+          value: orders
+              .where((order) => _status(order.status) == 'RECEIVED')
+              .length
+              .toString(),
+          requiredPermissions: const [
+            'purchase_orders.view',
+            'purchase_orders.create',
+            'purchase_orders.manage',
+          ],
+        ),
+        DashboardSummaryCard(
+          key: 'pending_invoices',
+          label: 'Pending Invoices',
+          value: invoices
+              .where((invoice) => _status(invoice.status) == 'PENDING')
+              .length
+              .toString(),
+          requiredPermissions: ['invoices.view', 'payments.view'],
+        ),
+        DashboardSummaryCard(
+          key: 'due_amount',
+          label: 'Due Amount',
+          value: 'BDT ${dueAmount.toStringAsFixed(0)}',
+          requiredPermissions: const ['invoices.view', 'payments.view'],
+        ),
+        DashboardSummaryCard(
+          key: 'paid_this_month',
+          label: 'Paid This Month',
+          value: 'BDT ${monthlySpend.toStringAsFixed(0)}',
+          requiredPermissions: const ['payments.view'],
+        ),
+        DashboardSummaryCard(
+          key: 'active_budgets',
+          label: 'Active Budgets',
+          value: budgets
+              .where((budget) => _status(budget.status) == 'ACTIVE')
+              .length
+              .toString(),
+          requiredPermissions: const ['budgets.view'],
+        ),
+        DashboardSummaryCard(
+          key: 'overdue_invoices',
+          label: 'Overdue Invoices',
+          value: invoices
+              .where(
+                (invoice) =>
+                    invoice.dueDate.isBefore(now) &&
+                    _status(invoice.status) != 'PAID' &&
+                    _status(invoice.status) != 'CANCELLED',
+              )
+              .length
+              .toString(),
+          requiredPermissions: ['invoices.view', 'payments.view'],
+        ),
+        DashboardSummaryCard(
+          key: 'total_requests',
+          label: 'Total Requests',
+          value: requests.length.toString(),
+          requiredPermissions: const ['purchase_requests.view'],
+        ),
+        DashboardSummaryCard(
+          key: 'monthly_spend',
+          label: 'Monthly Spend',
+          value: 'BDT ${monthlySpend.toStringAsFixed(0)}',
+          requiredPermissions: const ['reports.view', 'payments.view'],
+        ),
+        DashboardSummaryCard(
+          key: 'outstanding_due',
+          label: 'Outstanding Due',
+          value: 'BDT ${dueAmount.toStringAsFixed(0)}',
+          requiredPermissions: const ['invoices.view', 'payments.view'],
         ),
         DashboardSummaryCard(
           key: 'total_spend',
           label: 'Total Spend',
           value: 'BDT ${totalSpend.toStringAsFixed(0)}',
-          requiredPermissions: const ['finance.view'],
-        ),
-        const DashboardSummaryCard(
-          key: 'due_amount',
-          label: 'Due Amount',
-          value: 'BDT 0',
-          requiredPermissions: ['finance.view'],
+          requiredPermissions: const ['reports.view', 'payments.view'],
         ),
       ],
       activities: [
@@ -106,6 +297,18 @@ class DashboardRepositoryImpl implements DashboardRepository {
           ),
       ],
     );
+  }
+
+  bool _isSubmitted(dynamic request) => _status(request.status) == 'SUBMITTED';
+
+  bool _sameDate(DateTime left, DateTime right) {
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
+  }
+
+  String _status(String value) {
+    return value.trim().toUpperCase().replaceAll('-', '_').replaceAll(' ', '_');
   }
 
   DashboardSummary _summaryFromDto(DashboardSummaryDto dto) {
@@ -140,7 +343,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
     return switch (dto.key) {
       'my_requests' || 'myRequests' => const ['purchase_requests.view'],
       'pending_approvals' || 'pendingApprovals' => const [
-        'approvals.manage',
+        'approvals.view',
         'purchase_requests.approve',
       ],
       'purchase_orders' || 'purchaseOrders' => const [
@@ -148,9 +351,9 @@ class DashboardRepositoryImpl implements DashboardRepository {
         'purchase_orders.create',
         'purchase_orders.manage',
       ],
-      'invoices' => const ['invoices.view', 'finance.view'],
-      'total_spend' || 'totalSpend' => const ['finance.view'],
-      'due_amount' || 'dueAmount' => const ['finance.view'],
+      'invoices' => const ['invoices.view', 'payments.view'],
+      'total_spend' || 'totalSpend' => const ['reports.view', 'payments.view'],
+      'due_amount' || 'dueAmount' => const ['invoices.view', 'payments.view'],
       _ => const [],
     };
   }

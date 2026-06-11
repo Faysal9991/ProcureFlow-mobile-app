@@ -6,6 +6,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../domain/report_entity.dart';
 import 'report_controller.dart';
 
@@ -40,6 +42,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(reportControllerProvider);
+    final session = ref.watch(authControllerProvider).session;
+    final canExport = PermissionPolicy.canExportReports(session);
     return AppScaffold(
       title: widget.type.label,
       child: RefreshIndicator(
@@ -56,6 +60,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             _ExportActions(
               isExporting: state.isExporting,
               progress: state.exportProgress,
+              canExport: canExport,
               onExport: _export,
             ),
             const SizedBox(height: 12),
@@ -121,6 +126,16 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   }
 
   Future<void> _export(String format) async {
+    if (!PermissionPolicy.canExportReports(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     final path = await ref
         .read(reportControllerProvider.notifier)
         .export(widget.type, format);
@@ -176,11 +191,13 @@ class _ExportActions extends StatelessWidget {
   const _ExportActions({
     required this.isExporting,
     required this.progress,
+    required this.canExport,
     required this.onExport,
   });
 
   final bool isExporting;
   final double? progress;
+  final bool canExport;
   final ValueChanged<String> onExport;
 
   @override
@@ -193,13 +210,14 @@ class _ExportActions extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final format in const ['csv', 'xlsx', 'pdf'])
-                OutlinedButton.icon(
-                  key: Key('exportReport${format.toUpperCase()}Button'),
-                  onPressed: isExporting ? null : () => onExport(format),
-                  icon: const Icon(AppIcons.download),
-                  label: Text(format.toUpperCase()),
-                ),
+              if (canExport)
+                for (final format in const ['csv', 'xlsx', 'pdf'])
+                  OutlinedButton.icon(
+                    key: Key('exportReport${format.toUpperCase()}Button'),
+                    onPressed: isExporting ? null : () => onExport(format),
+                    icon: const Icon(AppIcons.download),
+                    label: Text(format.toUpperCase()),
+                  ),
             ],
           ),
           if (isExporting) ...[

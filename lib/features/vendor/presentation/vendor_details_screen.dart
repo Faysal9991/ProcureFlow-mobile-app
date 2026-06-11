@@ -9,6 +9,8 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/status_chip.dart';
 import '../../attachments/domain/attachment_entity.dart';
 import '../../attachments/presentation/attachment_section.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../domain/vendor_entity.dart';
 import 'vendor_controller.dart';
@@ -40,6 +42,7 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(vendorControllerProvider);
     final vendor = state.selectedVendor;
+    final session = ref.watch(authControllerProvider).session;
 
     return AppScaffold(
       title: 'Vendor Details',
@@ -67,12 +70,20 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen> {
               _VendorActions(
                 isMutating: state.isMutating,
                 vendor: vendor,
+                canManage: PermissionPolicy.canManageVendors(session),
                 onDelete: () => _delete(vendor),
               ),
               const SizedBox(height: 16),
               AttachmentSection(
                 entityType: AttachmentEntityType.vendor,
                 entityId: vendor.localId,
+                canView: PermissionPolicy.canViewAttachments(session: session),
+                canUpload: PermissionPolicy.canUploadAttachments(
+                  session: session,
+                ),
+                canDelete: PermissionPolicy.canDeleteAttachments(
+                  session: session,
+                ),
               ),
             ],
           ],
@@ -88,6 +99,16 @@ class _VendorDetailsScreenState extends ConsumerState<VendorDetailsScreen> {
   }
 
   Future<void> _delete(VendorEntity vendor) async {
+    if (!PermissionPolicy.canManageVendors(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -187,11 +208,13 @@ class _VendorActions extends StatelessWidget {
   const _VendorActions({
     required this.isMutating,
     required this.vendor,
+    required this.canManage,
     required this.onDelete,
   });
 
   final bool isMutating;
   final VendorEntity vendor;
+  final bool canManage;
   final VoidCallback onDelete;
 
   @override
@@ -200,23 +223,26 @@ class _VendorActions extends StatelessWidget {
       spacing: 10,
       runSpacing: 10,
       children: [
-        FilledButton.icon(
-          key: const Key('editVendorButton'),
-          onPressed: isMutating
-              ? null
-              : () => context.push('/vendors/${vendor.localId}/edit'),
-          icon: const Icon(AppIcons.description),
-          label: const Text('Edit'),
-        ),
-        OutlinedButton.icon(
-          key: const Key('deleteVendorButton'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.error,
+        if (canManage) ...[
+          FilledButton.icon(
+            key: const Key('editVendorButton'),
+            onPressed: isMutating
+                ? null
+                : () => context.push('/vendors/${vendor.localId}/edit'),
+            icon: const Icon(AppIcons.description),
+            label: const Text('Edit'),
           ),
-          onPressed: isMutating ? null : onDelete,
-          icon: const Icon(AppIcons.trash),
-          label: const Text('Delete'),
-        ),
+          OutlinedButton.icon(
+            key: const Key('deleteVendorButton'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: isMutating ? null : onDelete,
+            icon: const Icon(AppIcons.trash),
+            label: const Text('Delete'),
+          ),
+        ] else
+          const AppEmptyCard(message: 'This vendor is view only.'),
       ],
     );
   }

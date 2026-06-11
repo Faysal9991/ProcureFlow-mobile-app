@@ -32,23 +32,52 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     final path = _currentPath(context);
     final selectedIndex = appBottomNavSelectedIndex(path);
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: Text(widget.title), actions: widget.actions),
-      body: ColoredBox(
-        color: theme.scaffoldBackgroundColor,
-        child: AppSmoothScreenSwitcher(
-          transitionKey: path,
-          child: SafeArea(top: false, child: widget.child),
-        ),
-      ),
-      bottomNavigationBar: widget.showBottomNavigation
-          ? AppBottomNavigationBar(
-              selectedIndex: selectedIndex,
-              onDestinationSelected: (index) => _goToTab(context, index),
-            )
-          : null,
-      floatingActionButton: widget.floatingActionButton,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useNavigationRail =
+            widget.showBottomNavigation &&
+            constraints.maxWidth >= AppBreakpoints.navigationRail;
+        final body = ColoredBox(
+          color: theme.scaffoldBackgroundColor,
+          child: AppSmoothScreenSwitcher(
+            transitionKey: path,
+            child: SafeArea(top: false, child: widget.child),
+          ),
+        );
+
+        return Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          appBar: AppBar(title: Text(widget.title), actions: widget.actions),
+          body: useNavigationRail
+              ? Row(
+                  children: [
+                    AppNavigationRail(
+                      selectedIndex: selectedIndex,
+                      extended:
+                          constraints.maxWidth >=
+                          AppBreakpoints.extendedNavigationRail,
+                      topSafeArea: false,
+                      onDestinationSelected: (index) =>
+                          _goToTab(context, index),
+                    ),
+                    VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: theme.colorScheme.outline.withValues(alpha: 0.18),
+                    ),
+                    Expanded(child: body),
+                  ],
+                )
+              : body,
+          bottomNavigationBar: widget.showBottomNavigation && !useNavigationRail
+              ? AppBottomNavigationBar(
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: (index) => _goToTab(context, index),
+                )
+              : null,
+          floatingActionButton: widget.floatingActionButton,
+        );
+      },
     );
   }
 
@@ -70,6 +99,76 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     if (_currentPath(context) != route) {
       context.go(route);
     }
+  }
+}
+
+class AppNavigationRail extends StatelessWidget {
+  const AppNavigationRail({
+    super.key,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+    this.extended = false,
+    this.topSafeArea = true,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+  final bool extended;
+  final bool topSafeArea;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final inactiveColor = colorScheme.onSurface.withValues(alpha: 0.58);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        boxShadow: AppNeumorphic.softShadow(
+          theme.brightness,
+          depth: theme.brightness == Brightness.dark ? 0.20 : 0.10,
+          distance: 7,
+          blur: 16,
+        ),
+      ),
+      child: SafeArea(
+        top: topSafeArea,
+        bottom: true,
+        child: NavigationRail(
+          extended: extended,
+          minWidth: 72,
+          minExtendedWidth: 196,
+          selectedIndex: selectedIndex,
+          onDestinationSelected: onDestinationSelected,
+          backgroundColor: Colors.transparent,
+          indicatorColor: colorScheme.primary.withValues(alpha: 0.12),
+          labelType: extended
+              ? NavigationRailLabelType.none
+              : NavigationRailLabelType.all,
+          selectedIconTheme: IconThemeData(color: colorScheme.primary),
+          unselectedIconTheme: IconThemeData(color: inactiveColor),
+          selectedLabelTextStyle: theme.textTheme.labelSmall?.copyWith(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
+          ),
+          unselectedLabelTextStyle: theme.textTheme.labelSmall?.copyWith(
+            color: inactiveColor,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0,
+          ),
+          destinations: [
+            for (final tab in appBottomTabs)
+              NavigationRailDestination(
+                icon: Icon(tab.icon),
+                selectedIcon: Icon(tab.selectedIcon),
+                label: Text(tab.label),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

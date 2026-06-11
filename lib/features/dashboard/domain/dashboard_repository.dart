@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../auth/domain/auth_session.dart';
+import '../../auth/domain/permission_policy.dart';
 
 abstract interface class DashboardRepository {
   Future<DashboardSummary> getSummary(AuthSession session);
@@ -33,7 +34,7 @@ class DashboardSummaryCard extends Equatable {
 
   bool isVisibleFor(AuthSession session) {
     return requiredPermissions.isEmpty ||
-        session.hasAnyPermission(requiredPermissions);
+        PermissionPolicy.hasAnyPermission(session, requiredPermissions);
   }
 
   @override

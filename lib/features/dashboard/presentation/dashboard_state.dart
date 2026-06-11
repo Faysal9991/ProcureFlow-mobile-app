@@ -9,7 +9,13 @@ class DashboardState extends Equatable {
     this.errorMessage,
     this.cards = const [],
     this.activities = const [],
+    this.modules = const [],
+    this.quickActions = const [],
     this.menuItems = const [],
+    this.accessProfile = const DashboardAccessProfile(
+      primaryLabel: 'Employee',
+      roleLabels: ['Employee'],
+    ),
     this.unreadCount = 0,
   });
 
@@ -17,7 +23,10 @@ class DashboardState extends Equatable {
   final String? errorMessage;
   final List<DashboardSummaryCard> cards;
   final List<DashboardActivity> activities;
+  final List<DashboardModule> modules;
+  final List<DashboardQuickAction> quickActions;
   final List<AppMenuItem> menuItems;
+  final DashboardAccessProfile accessProfile;
   final int unreadCount;
 
   DashboardState copyWith({
@@ -26,7 +35,10 @@ class DashboardState extends Equatable {
     bool clearError = false,
     List<DashboardSummaryCard>? cards,
     List<DashboardActivity>? activities,
+    List<DashboardModule>? modules,
+    List<DashboardQuickAction>? quickActions,
     List<AppMenuItem>? menuItems,
+    DashboardAccessProfile? accessProfile,
     int? unreadCount,
   }) {
     return DashboardState(
@@ -34,7 +46,10 @@ class DashboardState extends Equatable {
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
       cards: cards ?? this.cards,
       activities: activities ?? this.activities,
+      modules: modules ?? this.modules,
+      quickActions: quickActions ?? this.quickActions,
       menuItems: menuItems ?? this.menuItems,
+      accessProfile: accessProfile ?? this.accessProfile,
       unreadCount: unreadCount ?? this.unreadCount,
     );
   }
@@ -45,7 +60,10 @@ class DashboardState extends Equatable {
     errorMessage,
     cards,
     activities,
+    modules,
+    quickActions,
     menuItems,
+    accessProfile,
     unreadCount,
   ];
 }

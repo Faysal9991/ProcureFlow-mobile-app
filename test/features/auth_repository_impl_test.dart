@@ -330,6 +330,38 @@ class _FakeProcurementApi implements ProcurementApi {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('auth DTOs parse singular backend role and permission objects', () {
+    final login = LoginResponseDto.fromJson({
+      'success': true,
+      'data': {
+        'accessToken': 'server-token',
+        'user': {
+          'uuid': 'user-uuid',
+          'companyId': 1,
+          'name': 'Company Admin',
+          'email': 'admin@example.test',
+          'role': 'COMPANY_ADMIN',
+        },
+      },
+    });
+    final permissions = PermissionsResponseDto.fromJson({
+      'success': true,
+      'data': {
+        'items': [
+          {'key': 'Purchase request create'},
+          {'permissionKey': 'vendors.manage'},
+        ],
+      },
+    });
+
+    expect(login.userId, 'user-uuid');
+    expect(login.roles, ['COMPANY_ADMIN']);
+    expect(permissions.permissions, [
+      'Purchase request create',
+      'vendors.manage',
+    ]);
+  });
+
   late AppDatabase database;
   late SecureSessionStorage storage;
   late _FakeProcurementApi api;
@@ -367,8 +399,73 @@ void main() {
     expect(api.permissionsCalls, 1);
     expect(await storage.readAccessToken(), 'server-token');
     expect(session.accessToken, 'server-token');
-    expect(session.permissions, ['purchase_requests.view']);
+    expect(session.permissions, [
+      'purchase_requests.view',
+      'purchase_requests.create',
+    ]);
   });
+
+  test('login normalizes backend role and permission names', () async {
+    api.currentUser = const AuthUserDto(
+      userId: 'admin-1',
+      userName: 'Admin User',
+      email: 'admin@example.com',
+      companyId: 'company-1',
+      companyName: 'Test Company',
+      roles: ['company admin'],
+    );
+    api.permissionsResponse = const PermissionsResponseDto(
+      permissions: [
+        'Purchase request create',
+        'vendors_manage',
+        'rfq.create',
+        'reports.manage',
+      ],
+    );
+
+    final session = await repository.login(
+      email: 'admin@example.com',
+      password: 'password',
+    );
+
+    expect(session.roles, ['COMPANY_ADMIN']);
+    expect(session.permissions, [
+      'purchase_requests.create',
+      'vendors.manage',
+      'rfq.manage',
+      'reports.manage',
+    ]);
+  });
+
+  test(
+    'employee role keeps purchase request baseline with partial backend permissions',
+    () async {
+      api.currentUser = const AuthUserDto(
+        userId: 'employee-1',
+        userName: 'Employee User',
+        email: 'employee@example.com',
+        companyId: 'company-1',
+        companyName: 'Test Company',
+        roles: ['EMPLOYEE'],
+      );
+      api.permissionsResponse = const PermissionsResponseDto(
+        permissions: [
+          'attachment.view',
+          'budget.view',
+          'report.purchase_request.view',
+        ],
+      );
+
+      final session = await repository.login(
+        email: 'employee@example.com',
+        password: 'password',
+      );
+
+      expect(session.roles, ['EMPLOYEE']);
+      expect(session.permissions, contains('purchase_requests.view'));
+      expect(session.permissions, contains('purchase_requests.create'));
+    },
+  );
 
   test('restoreSession validates token with me and permissions', () async {
     await storage.writeAccessToken('stored-token');
@@ -379,7 +476,10 @@ void main() {
     expect(api.permissionsCalls, 1);
     expect(session?.accessToken, 'stored-token');
     expect(session?.email, 'test@example.com');
-    expect(session?.permissions, ['purchase_requests.view']);
+    expect(session?.permissions, [
+      'purchase_requests.view',
+      'purchase_requests.create',
+    ]);
   });
 
   test('restoreSession clears invalid token', () async {

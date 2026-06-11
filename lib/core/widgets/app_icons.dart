@@ -7,6 +7,7 @@ class AppIcons {
   static const IconData add = LucideIcons.plus;
   static const IconData plus = LucideIcons.plus;
   static const IconData approval = LucideIcons.badgeCheck;
+  static const IconData assistant = LucideIcons.bot;
   static const IconData arrowForward = LucideIcons.arrowRight;
   static const IconData bell = LucideIcons.bell;
   static const IconData bellActive = LucideIcons.bellDot;

@@ -11,6 +11,7 @@ import '../../approval/domain/approval_repository.dart';
 import '../../approval/presentation/approval_controller.dart';
 import '../../attachments/domain/attachment_entity.dart';
 import '../../attachments/presentation/attachment_section.dart';
+import '../../auth/domain/permission_policy.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../../notifications/presentation/notification_controller.dart';
@@ -48,6 +49,7 @@ class _PurchaseRequestDetailsScreenState
   Widget build(BuildContext context) {
     final state = ref.watch(purchaseRequestControllerProvider);
     final request = state.selectedRequest;
+    final session = ref.watch(authControllerProvider).session;
 
     return AppScaffold(
       title: widget.approvalMode ? 'Approval Details' : 'Request Details',
@@ -80,6 +82,22 @@ class _PurchaseRequestDetailsScreenState
                 state: state,
                 request: request,
                 approvalMode: widget.approvalMode,
+                canEdit: PermissionPolicy.canEditPurchaseRequest(
+                  session: session,
+                  requesterId: request.requesterId,
+                  status: request.normalizedStatus,
+                ),
+                canSubmit: PermissionPolicy.canSubmitPurchaseRequest(
+                  session: session,
+                  requesterId: request.requesterId,
+                  status: request.normalizedStatus,
+                ),
+                canCancel: PermissionPolicy.canCancelPurchaseRequest(
+                  session: session,
+                  requesterId: request.requesterId,
+                  status: request.normalizedStatus,
+                ),
+                canApprove: PermissionPolicy.canApprove(session),
                 onSubmit: () => _submit(request),
                 onCancel: () => _cancel(request),
                 onApprove: () => _approvalDecision(request, approve: true),
@@ -89,8 +107,28 @@ class _PurchaseRequestDetailsScreenState
               AttachmentSection(
                 entityType: AttachmentEntityType.purchaseRequest,
                 entityId: request.localId,
-                canUpload: !widget.approvalMode,
-                canDelete: !widget.approvalMode,
+                canView: PermissionPolicy.canViewAttachments(
+                  session: session,
+                  isOwnPurchaseRequest:
+                      request.requesterId == session?.userId ||
+                      request.requesterId == 'current-user',
+                ),
+                canUpload:
+                    !widget.approvalMode &&
+                    PermissionPolicy.canUploadAttachments(
+                      session: session,
+                      isOwnPurchaseRequest:
+                          request.requesterId == session?.userId ||
+                          request.requesterId == 'current-user',
+                    ),
+                canDelete:
+                    !widget.approvalMode &&
+                    PermissionPolicy.canDeleteAttachments(
+                      session: session,
+                      isOwnPurchaseRequest:
+                          request.requesterId == session?.userId ||
+                          request.requesterId == 'current-user',
+                    ),
               ),
             ],
           ],
@@ -106,6 +144,15 @@ class _PurchaseRequestDetailsScreenState
   }
 
   Future<void> _submit(PurchaseRequestEntity request) async {
+    final session = ref.read(authControllerProvider).session;
+    if (!PermissionPolicy.canSubmitPurchaseRequest(
+      session: session,
+      requesterId: request.requesterId,
+      status: request.normalizedStatus,
+    )) {
+      _showDeniedSnackBar();
+      return;
+    }
     final updated = await ref
         .read(purchaseRequestControllerProvider.notifier)
         .submit(request.localId);
@@ -116,6 +163,15 @@ class _PurchaseRequestDetailsScreenState
   }
 
   Future<void> _cancel(PurchaseRequestEntity request) async {
+    final session = ref.read(authControllerProvider).session;
+    if (!PermissionPolicy.canCancelPurchaseRequest(
+      session: session,
+      requesterId: request.requesterId,
+      status: request.normalizedStatus,
+    )) {
+      _showDeniedSnackBar();
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -150,6 +206,12 @@ class _PurchaseRequestDetailsScreenState
     PurchaseRequestEntity request, {
     required bool approve,
   }) async {
+    if (!PermissionPolicy.canApprove(
+      ref.read(authControllerProvider).session,
+    )) {
+      _showDeniedSnackBar();
+      return;
+    }
     final payload = await _showApprovalDecisionSheet(context, approve: approve);
     if (payload == null) return;
 
@@ -168,6 +230,14 @@ class _PurchaseRequestDetailsScreenState
     await _load();
     ref.invalidate(dashboardControllerProvider);
     ref.invalidate(notificationControllerProvider);
+  }
+
+  void _showDeniedSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('You do not have permission for this action.'),
+      ),
+    );
   }
 }
 
@@ -347,6 +417,10 @@ class _Actions extends StatelessWidget {
     required this.state,
     required this.request,
     required this.approvalMode,
+    required this.canEdit,
+    required this.canSubmit,
+    required this.canCancel,
+    required this.canApprove,
     required this.onSubmit,
     required this.onCancel,
     required this.onApprove,
@@ -356,6 +430,10 @@ class _Actions extends StatelessWidget {
   final PurchaseRequestState state;
   final PurchaseRequestEntity request;
   final bool approvalMode;
+  final bool canEdit;
+  final bool canSubmit;
+  final bool canCancel;
+  final bool canApprove;
   final VoidCallback onSubmit;
   final VoidCallback onCancel;
   final VoidCallback onApprove;
@@ -366,7 +444,7 @@ class _Actions extends StatelessWidget {
     final actions = <Widget>[];
 
     if (approvalMode) {
-      if (request.isSubmitted) {
+      if (request.isSubmitted && canApprove) {
         actions.add(
           FilledButton.icon(
             key: const Key('approveRequestButton'),
@@ -400,7 +478,7 @@ class _Actions extends StatelessWidget {
       return Wrap(spacing: 10, runSpacing: 10, children: actions);
     }
 
-    if (request.canEdit) {
+    if (request.canEdit && canEdit) {
       actions.add(
         OutlinedButton.icon(
           key: const Key('editRequestButton'),
@@ -412,7 +490,7 @@ class _Actions extends StatelessWidget {
         ),
       );
     }
-    if (request.canSubmit) {
+    if (request.canSubmit && canSubmit) {
       actions.add(
         FilledButton.icon(
           key: const Key('submitDraftButton'),
@@ -422,7 +500,7 @@ class _Actions extends StatelessWidget {
         ),
       );
     }
-    if (request.canCancel) {
+    if (request.canCancel && canCancel) {
       actions.add(
         OutlinedButton.icon(
           key: const Key('cancelRequestButton'),

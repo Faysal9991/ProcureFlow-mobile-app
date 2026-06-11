@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/status_chip.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../domain/rfq_entity.dart';
 import 'rfq_controller.dart';
 import 'rfq_state.dart';
@@ -40,16 +42,19 @@ class _RfqListScreenState extends ConsumerState<RfqListScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(rfqControllerProvider);
+    final session = ref.watch(authControllerProvider).session;
 
     return AppScaffold(
       title: 'RFQs',
       showBottomNavigation: widget.showBottomNavigation,
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('createRfqButton'),
-        onPressed: () => context.push('/rfqs/new'),
-        icon: const Icon(AppIcons.add),
-        label: const Text('Create'),
-      ),
+      floatingActionButton: PermissionPolicy.canManageRfq(session)
+          ? FloatingActionButton.extended(
+              key: const Key('createRfqButton'),
+              onPressed: () => context.push('/rfqs/new'),
+              icon: const Icon(AppIcons.add),
+              label: const Text('New RFQ'),
+            )
+          : null,
       child: RefreshIndicator(
         onRefresh: _load,
         child: AppScreenListView(
@@ -104,6 +109,8 @@ class _RfqListScreenState extends ConsumerState<RfqListScreen> {
 }
 
 class _RfqFiltersCard extends StatelessWidget {
+  static const _anyStatus = 'ANY';
+
   const _RfqFiltersCard({
     required this.searchController,
     required this.purchaseRequestController,
@@ -124,6 +131,7 @@ class _RfqFiltersCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppSectionCard(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextField(
             key: const Key('rfqSearchField'),
@@ -136,42 +144,14 @@ class _RfqFiltersCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String?>(
-                  key: ValueKey('rfqStatusFilter-$status'),
-                  initialValue: status,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: const [
-                    DropdownMenuItem(value: null, child: Text('Any')),
-                    DropdownMenuItem(
-                      value: RfqStatus.draft,
-                      child: Text('Draft'),
-                    ),
-                    DropdownMenuItem(
-                      value: RfqStatus.open,
-                      child: Text('Open'),
-                    ),
-                    DropdownMenuItem(
-                      value: RfqStatus.quotationReceived,
-                      child: Text('Quotation Received'),
-                    ),
-                    DropdownMenuItem(
-                      value: RfqStatus.completed,
-                      child: Text('Completed'),
-                    ),
-                    DropdownMenuItem(
-                      value: RfqStatus.cancelled,
-                      child: Text('Cancelled'),
-                    ),
-                  ],
-                  onChanged: onStatusChanged,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final fields = [
+                _StatusDropdown(
+                  status: status,
+                  onStatusChanged: onStatusChanged,
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
+                TextField(
                   key: const Key('rfqPurchaseRequestFilterField'),
                   controller: purchaseRequestController,
                   decoration: const InputDecoration(
@@ -179,8 +159,24 @@ class _RfqFiltersCard extends StatelessWidget {
                     prefixIcon: Icon(AppIcons.list),
                   ),
                 ),
-              ),
-            ],
+              ];
+
+              if (constraints.maxWidth < 520) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [fields[0], const SizedBox(height: 12), fields[1]],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: fields[0]),
+                  const SizedBox(width: 10),
+                  Expanded(child: fields[1]),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 12),
           Row(
@@ -197,6 +193,37 @@ class _RfqFiltersCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StatusDropdown extends StatelessWidget {
+  const _StatusDropdown({required this.status, required this.onStatusChanged});
+
+  final String? status;
+  final ValueChanged<String?> onStatusChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      key: ValueKey('rfqStatusFilter-${status ?? _RfqFiltersCard._anyStatus}'),
+      initialValue: status ?? _RfqFiltersCard._anyStatus,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'Status'),
+      items: const [
+        DropdownMenuItem(value: _RfqFiltersCard._anyStatus, child: Text('Any')),
+        DropdownMenuItem(value: RfqStatus.draft, child: Text('Draft')),
+        DropdownMenuItem(value: RfqStatus.open, child: Text('Open')),
+        DropdownMenuItem(
+          value: RfqStatus.quotationReceived,
+          child: Text('Quotation Received'),
+        ),
+        DropdownMenuItem(value: RfqStatus.completed, child: Text('Completed')),
+        DropdownMenuItem(value: RfqStatus.cancelled, child: Text('Cancelled')),
+      ],
+      onChanged: (value) {
+        onStatusChanged(value == _RfqFiltersCard._anyStatus ? null : value);
+      },
     );
   }
 }

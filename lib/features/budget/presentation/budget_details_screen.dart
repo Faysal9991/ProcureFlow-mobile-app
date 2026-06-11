@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/status_chip.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../domain/budget_entity.dart';
 import 'budget_controller.dart';
@@ -36,6 +38,7 @@ class _BudgetDetailsScreenState extends ConsumerState<BudgetDetailsScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(budgetControllerProvider);
     final budget = state.selectedBudget;
+    final session = ref.watch(authControllerProvider).session;
     return AppScaffold(
       title: 'Budget Details',
       showBottomNavigation: widget.showBottomNavigation,
@@ -62,6 +65,7 @@ class _BudgetDetailsScreenState extends ConsumerState<BudgetDetailsScreen> {
               _Actions(
                 budget: budget,
                 isMutating: state.isMutating,
+                canManage: PermissionPolicy.canManageBudgets(session),
                 onActivate: () => _confirm(
                   title: 'Activate Budget?',
                   actionLabel: 'Activate',
@@ -96,6 +100,16 @@ class _BudgetDetailsScreenState extends ConsumerState<BudgetDetailsScreen> {
     required String actionLabel,
     required Future<Budget?> Function() action,
   }) async {
+    if (!PermissionPolicy.canManageBudgets(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -122,6 +136,16 @@ class _BudgetDetailsScreenState extends ConsumerState<BudgetDetailsScreen> {
   }
 
   Future<void> _showAdjustment(Budget budget) async {
+    if (!PermissionPolicy.canManageBudgets(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     final amountController = TextEditingController();
     final descriptionController = TextEditingController();
     final result = await showModalBottomSheet<BudgetAdjustmentPayload>(
@@ -260,6 +284,7 @@ class _Actions extends StatelessWidget {
   const _Actions({
     required this.budget,
     required this.isMutating,
+    required this.canManage,
     required this.onActivate,
     required this.onClose,
     required this.onAdjust,
@@ -267,6 +292,7 @@ class _Actions extends StatelessWidget {
 
   final Budget budget;
   final bool isMutating;
+  final bool canManage;
   final VoidCallback onActivate;
   final VoidCallback onClose;
   final VoidCallback onAdjust;
@@ -278,7 +304,7 @@ class _Actions extends StatelessWidget {
         spacing: 10,
         runSpacing: 10,
         children: [
-          if (budget.isDraft)
+          if (budget.isDraft && canManage)
             OutlinedButton.icon(
               key: const Key('editBudgetButton'),
               onPressed: isMutating
@@ -287,21 +313,21 @@ class _Actions extends StatelessWidget {
               icon: const Icon(AppIcons.description),
               label: const Text('Edit'),
             ),
-          if (budget.isDraft)
+          if (budget.isDraft && canManage)
             FilledButton.icon(
               key: const Key('activateBudgetButton'),
               onPressed: isMutating ? null : onActivate,
               icon: const Icon(AppIcons.check),
               label: const Text('Activate'),
             ),
-          if (budget.isActive)
+          if (budget.isActive && canManage)
             FilledButton.icon(
               key: const Key('adjustBudgetButton'),
               onPressed: isMutating ? null : onAdjust,
               icon: const Icon(AppIcons.plus),
               label: const Text('Add Adjustment'),
             ),
-          if (budget.isActive)
+          if (budget.isActive && canManage)
             OutlinedButton.icon(
               key: const Key('closeBudgetButton'),
               onPressed: isMutating ? null : onClose,

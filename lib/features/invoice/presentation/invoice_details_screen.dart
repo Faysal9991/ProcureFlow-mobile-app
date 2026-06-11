@@ -9,6 +9,7 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/status_chip.dart';
 import '../../attachments/domain/attachment_entity.dart';
 import '../../attachments/presentation/attachment_section.dart';
+import '../../auth/domain/permission_policy.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../domain/invoice_entity.dart';
@@ -42,13 +43,9 @@ class _InvoiceDetailsScreenState extends ConsumerState<InvoiceDetailsScreen> {
     final state = ref.watch(invoiceControllerProvider);
     final invoice = state.selectedInvoice;
     final session = ref.watch(authControllerProvider).session;
-    final canManage = session?.hasPermission('invoices.manage') ?? false;
-    final canRecordPayment =
-        session?.hasAnyPermission(['payments.create', 'payments.manage']) ??
-        false;
-    final canViewPayments =
-        session?.hasAnyPermission(['payments.view', 'payments.manage']) ??
-        false;
+    final canManage = PermissionPolicy.canManageInvoices(session);
+    final canRecordPayment = PermissionPolicy.canCreatePayment(session);
+    final canViewPayments = PermissionPolicy.canViewPayments(session);
 
     return AppScaffold(
       title: 'Invoice Details',
@@ -85,8 +82,15 @@ class _InvoiceDetailsScreenState extends ConsumerState<InvoiceDetailsScreen> {
               AttachmentSection(
                 entityType: AttachmentEntityType.invoice,
                 entityId: invoice.localId,
-                canUpload: !invoice.isPaid && !invoice.isCancelled,
-                canDelete: !invoice.isPaid && !invoice.isCancelled,
+                canView: PermissionPolicy.canViewAttachments(session: session),
+                canUpload:
+                    !invoice.isPaid &&
+                    !invoice.isCancelled &&
+                    PermissionPolicy.canUploadAttachments(session: session),
+                canDelete:
+                    !invoice.isPaid &&
+                    !invoice.isCancelled &&
+                    PermissionPolicy.canDeleteAttachments(session: session),
               ),
             ],
           ],
@@ -102,6 +106,16 @@ class _InvoiceDetailsScreenState extends ConsumerState<InvoiceDetailsScreen> {
   }
 
   Future<void> _confirmCancel(Invoice invoice) async {
+    if (!PermissionPolicy.canManageInvoices(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

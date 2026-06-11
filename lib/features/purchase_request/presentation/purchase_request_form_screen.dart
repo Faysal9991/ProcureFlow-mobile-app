@@ -8,6 +8,8 @@ import '../../../app/theme/app_theme.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/status_chip.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../domain/purchase_request_entity.dart';
 import 'purchase_request_controller.dart';
 
@@ -75,8 +77,17 @@ class _PurchaseRequestFormScreenState
 
     final state = ref.watch(purchaseRequestControllerProvider);
     final request = state.selectedRequest;
+    final session = ref.watch(authControllerProvider).session;
     final isEdit = widget.isEditMode;
-    final canEdit = !isEdit || request?.canEdit == true;
+    final canCreate = PermissionPolicy.canCreatePurchaseRequest(session);
+    final canEdit = !isEdit
+        ? canCreate
+        : request != null &&
+              PermissionPolicy.canEditPurchaseRequest(
+                session: session,
+                requesterId: request.requesterId,
+                status: request.normalizedStatus,
+              );
 
     if (isEdit && !_hydrated && request != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -103,8 +114,9 @@ class _PurchaseRequestFormScreenState
             return AppScreenListView(
               children: [
                 AppEmptyCard(
-                  message:
-                      'Only draft requests can be edited. This request is ${request?.normalizedStatus ?? 'not editable'}.',
+                  message: isEdit
+                      ? 'You can only edit your own draft requests.'
+                      : 'You do not have permission to create purchase requests.',
                 ),
               ],
             );
@@ -198,6 +210,10 @@ class _PurchaseRequestFormScreenState
   }
 
   Future<void> _saveDraft() async {
+    if (!_hasFormPermission) {
+      _showDeniedSnackBar();
+      return;
+    }
     if (!_validate()) return;
     final request = await ref
         .read(purchaseRequestControllerProvider.notifier)
@@ -210,6 +226,10 @@ class _PurchaseRequestFormScreenState
   }
 
   Future<void> _submit() async {
+    if (!_hasFormPermission) {
+      _showDeniedSnackBar();
+      return;
+    }
     if (!_validate()) return;
     final controller = ref.read(purchaseRequestControllerProvider.notifier);
     final request = widget.requestId == null
@@ -232,6 +252,28 @@ class _PurchaseRequestFormScreenState
       return false;
     }
     return true;
+  }
+
+  bool get _hasFormPermission {
+    final session = ref.read(authControllerProvider).session;
+    if (!widget.isEditMode) {
+      return PermissionPolicy.canCreatePurchaseRequest(session);
+    }
+    final request = ref.read(purchaseRequestControllerProvider).selectedRequest;
+    if (request == null) return false;
+    return PermissionPolicy.canEditPurchaseRequest(
+      session: session,
+      requesterId: request.requesterId,
+      status: request.normalizedStatus,
+    );
+  }
+
+  void _showDeniedSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('You do not have permission for this action.'),
+      ),
+    );
   }
 }
 

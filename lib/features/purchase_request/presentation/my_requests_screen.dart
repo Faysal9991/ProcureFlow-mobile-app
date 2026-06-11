@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/status_chip.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../domain/purchase_request_entity.dart';
 import 'purchase_request_controller.dart';
 import 'purchase_request_state.dart';
@@ -41,16 +43,19 @@ class _MyRequestsScreenState extends ConsumerState<MyRequestsScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(purchaseRequestControllerProvider);
+    final session = ref.watch(authControllerProvider).session;
 
     return AppScaffold(
       title: 'My Requests',
       showBottomNavigation: widget.showBottomNavigation,
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('createRequestButton'),
-        onPressed: () => context.push('/requests/new'),
-        icon: const Icon(AppIcons.add),
-        label: const Text('Create'),
-      ),
+      floatingActionButton: PermissionPolicy.canCreatePurchaseRequest(session)
+          ? FloatingActionButton.extended(
+              key: const Key('createRequestButton'),
+              onPressed: () => context.push('/requests/new'),
+              icon: const Icon(AppIcons.add),
+              label: const Text('New Request'),
+            )
+          : null,
       child: RefreshIndicator(
         onRefresh: _load,
         child: AppScreenListView(

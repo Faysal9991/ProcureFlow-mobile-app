@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../auth/domain/permission_policy.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../domain/invoice_entity.dart';
@@ -55,7 +56,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     final state = ref.watch(invoiceControllerProvider);
     final invoice = state.selectedInvoice;
     final session = ref.watch(authControllerProvider).session;
-    final canManage = session?.hasPermission('invoices.manage') ?? false;
+    final canManage = PermissionPolicy.canManageInvoices(session);
     if (invoice != null) {
       _hydrate(invoice);
     }
@@ -119,6 +120,16 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   }
 
   Future<void> _save(Invoice invoice) async {
+    if (!PermissionPolicy.canManageInvoices(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     setState(() => _submitted = true);
     final invoiceDate = _parseDate(_invoiceDateController.text);
     final dueDate = _parseDate(_dueDateController.text);

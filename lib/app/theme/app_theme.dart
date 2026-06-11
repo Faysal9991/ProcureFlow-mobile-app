@@ -90,6 +90,14 @@ class AppInsets {
   static const cardXLarge = EdgeInsets.all(22);
 }
 
+class AppBreakpoints {
+  const AppBreakpoints._();
+
+  static const double navigationRail = 900;
+  static const double extendedNavigationRail = 1120;
+  static const double contentMaxWidth = 1120;
+}
+
 class AppRadius {
   const AppRadius._();
 
@@ -352,7 +360,7 @@ class AppTheme {
           shadowColor: brightness == Brightness.light
               ? AppColors.red900.withValues(alpha: 0.18)
               : Colors.black.withValues(alpha: 0.28),
-          minimumSize: const Size.fromHeight(48),
+          minimumSize: const Size(64, 48),
           padding: const EdgeInsets.symmetric(horizontal: 16),
           shape: RoundedRectangleBorder(borderRadius: AppRadius.controlBorder),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
@@ -367,7 +375,7 @@ class AppTheme {
           shadowColor: brightness == Brightness.light
               ? AppColors.neutral400.withValues(alpha: 0.16)
               : Colors.black.withValues(alpha: 0.22),
-          minimumSize: const Size.fromHeight(48),
+          minimumSize: const Size(64, 48),
           padding: const EdgeInsets.symmetric(horizontal: 16),
           shape: RoundedRectangleBorder(borderRadius: AppRadius.controlBorder),
           side: BorderSide(color: outline),

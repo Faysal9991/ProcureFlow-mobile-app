@@ -7,6 +7,8 @@ import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../attachments/domain/attachment_entity.dart';
 import '../../attachments/presentation/attachment_section.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../domain/payment_entity.dart';
 import 'payment_controller.dart';
 
@@ -36,6 +38,7 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(paymentControllerProvider);
     final payment = state.selectedPayment;
+    final session = ref.watch(authControllerProvider).session;
     return AppScaffold(
       title: 'Payment Details',
       showBottomNavigation: widget.showBottomNavigation,
@@ -62,6 +65,13 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
               AttachmentSection(
                 entityType: AttachmentEntityType.payment,
                 entityId: payment.localId,
+                canView: PermissionPolicy.canViewAttachments(session: session),
+                canUpload: PermissionPolicy.canUploadAttachments(
+                  session: session,
+                ),
+                canDelete: PermissionPolicy.canDeleteAttachments(
+                  session: session,
+                ),
               ),
             ],
           ],

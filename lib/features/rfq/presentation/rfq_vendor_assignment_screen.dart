@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../../vendor/domain/vendor_entity.dart';
 import '../../vendor/presentation/vendor_providers.dart';
@@ -187,6 +189,14 @@ class _RfqVendorAssignmentScreenState
   }
 
   Future<void> _save() async {
+    if (!PermissionPolicy.canManageRfq(
+      ref.read(authControllerProvider).session,
+    )) {
+      setState(
+        () => _errorMessage = 'You do not have permission for this action.',
+      );
+      return;
+    }
     if (_selectedVendorIds.isEmpty) {
       setState(() => _errorMessage = 'Select at least one vendor.');
       return;

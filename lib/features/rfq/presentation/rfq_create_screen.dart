@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../domain/rfq_entity.dart';
 import 'rfq_controller.dart';
@@ -160,6 +162,16 @@ class _RfqCreateScreenState extends ConsumerState<RfqCreateScreen> {
   }
 
   Future<void> _create() async {
+    if (!PermissionPolicy.canManageRfq(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     setState(() => _submitted = true);
     if (_purchaseRequestId == null || _dueDate == null) return;
     final rfq = await ref

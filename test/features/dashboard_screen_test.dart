@@ -9,6 +9,10 @@ import 'package:procurement_management/features/dashboard/presentation/dashboard
 import 'package:procurement_management/features/dashboard/presentation/dashboard_screen.dart';
 
 class _FakeAuthRepository implements AuthRepository {
+  _FakeAuthRepository([this.session = _employeeSession]);
+
+  final AuthSession session;
+
   @override
   Future<AuthSession> changePassword({
     required String currentPassword,
@@ -26,18 +30,20 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> logout() async {}
 
   @override
-  Future<AuthSession?> restoreSession() async => const AuthSession(
-    accessToken: 'token',
-    userId: 'user-employee',
-    userName: 'Tanvir Hasan',
-    email: 'tanvir@example.com',
-    companyId: 'company-demo',
-    companyName: 'Demo Company',
-    departmentName: 'Operations',
-    roles: ['employee'],
-    permissions: ['purchase_requests.view'],
-  );
+  Future<AuthSession?> restoreSession() async => session;
 }
+
+const _employeeSession = AuthSession(
+  accessToken: 'token',
+  userId: 'user-employee',
+  userName: 'Tanvir Hasan',
+  email: 'tanvir@example.com',
+  companyId: 'company-demo',
+  companyName: 'Demo Company',
+  departmentName: 'Operations',
+  roles: ['employee'],
+  permissions: ['purchase_requests.view'],
+);
 
 class _FakeDashboardRepository implements DashboardRepository {
   @override
@@ -94,9 +100,67 @@ void main() {
     expect(find.textContaining('Tanvir'), findsOneWidget);
     expect(find.text('ProcureFlow'), findsOneWidget);
     expect(find.text('My Requests'), findsWidgets);
-    expect(find.text('4'), findsOneWidget);
+    expect(find.text('4'), findsWidgets);
     expect(find.text('Purchase Orders'), findsNothing);
     expect(find.text('Coming Soon'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Welcome'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Welcome'), findsOneWidget);
   });
+
+  testWidgets(
+    'dashboard renders explicit permission union for multi-role user',
+    (tester) async {
+      final authController = AuthController(
+        _FakeAuthRepository(
+          const AuthSession(
+            accessToken: 'token',
+            userId: 'user-multi',
+            userName: 'Nadia Rahman',
+            email: 'nadia@example.com',
+            companyId: 'company-demo',
+            companyName: 'Demo Company',
+            roles: ['PROCUREMENT', 'FINANCE'],
+            permissions: [
+              'vendors.view',
+              'rfq.view',
+              'purchase_orders.view',
+              'invoices.view',
+              'payments.view',
+              'budgets.view',
+              'reports.view',
+            ],
+          ),
+        ),
+      );
+      await authController.restoreSession();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith((ref) => authController),
+            dashboardRepositoryProvider.overrideWithValue(
+              _FakeDashboardRepository(),
+            ),
+          ],
+          child: const MaterialApp(home: DashboardScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Procurement Officer / Demo Company'), findsOneWidget);
+      expect(find.text('Vendors'), findsOneWidget);
+      expect(find.text('RFQ'), findsOneWidget);
+      expect(find.text('Purchase Orders'), findsWidgets);
+      expect(find.text('Invoices'), findsOneWidget);
+      expect(find.text('Payments'), findsOneWidget);
+      expect(find.text('Budgets'), findsOneWidget);
+      expect(find.text('Reports'), findsOneWidget);
+      expect(find.text('My Requests'), findsNothing);
+      expect(find.text('Approvals'), findsNothing);
+    },
+  );
 }

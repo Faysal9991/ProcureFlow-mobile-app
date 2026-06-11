@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/presentation/auth_controller.dart';
 import '../features/dashboard/presentation/dashboard_controller.dart';
 import '../features/notifications/presentation/notification_controller.dart';
+import '../features/profile/presentation/app_settings_controller.dart';
 import '../features/sync/presentation/sync_providers.dart';
 import '../core/providers/infrastructure_providers.dart';
 import 'router/app_router.dart';
@@ -65,12 +66,14 @@ class _ProcurementAppState extends ConsumerState<ProcurementApp> {
       ref.invalidate(notificationControllerProvider);
     });
 
+    final settings = ref.watch(appSettingsControllerProvider);
+
     return MaterialApp.router(
       title: 'Procurement Management',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: settings.themeMode,
       routerConfig: ref.watch(appRouterProvider),
     );
   }

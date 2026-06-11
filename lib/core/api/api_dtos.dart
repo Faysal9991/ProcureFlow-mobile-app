@@ -33,7 +33,7 @@ class LoginResponseDto {
             'accessToken',
             'token',
           ])!,
-      userId: _string(source, const ['user_id', 'userId', 'id']) ?? '',
+      userId: _string(source, const ['user_id', 'userId', 'uuid', 'id']) ?? '',
       userName:
           _string(source, const [
             'user_name',
@@ -48,10 +48,27 @@ class LoginResponseDto {
       companyName: _string(source, const ['company_name', 'companyName']) ?? '',
       departmentName:
           _string(source, const ['department_name', 'departmentName']) ?? '',
-      roles: _stringList(source['roles']) ?? _stringList(json['roles']) ?? [],
+      roles:
+          _stringValues(source['roles'], const [
+            'role',
+            'code',
+            'key',
+            'name',
+          ]) ??
+          _stringValues(source['role'], const [
+            'role',
+            'code',
+            'key',
+            'name',
+          ]) ??
+          _stringValues(json['roles'], const ['role', 'code', 'key', 'name']) ??
+          _stringValues(json['role'], const ['role', 'code', 'key', 'name']) ??
+          [],
       permissions:
-          _stringList(source['permissions']) ??
-          _stringList(json['permissions']) ??
+          _permissionValues(source['permissions']) ??
+          _permissionValues(source['permission']) ??
+          _permissionValues(json['permissions']) ??
+          _permissionValues(json['permission']) ??
           [],
       mustChangePassword:
           _bool(source, const ['must_change_password', 'mustChangePassword']) ??
@@ -103,7 +120,7 @@ class AuthUserDto {
     final user = _object(json['user']) ?? _object(data?['user']);
     final source = user ?? data ?? json;
     return AuthUserDto(
-      userId: _string(source, const ['user_id', 'userId', 'id']) ?? '',
+      userId: _string(source, const ['user_id', 'userId', 'uuid', 'id']) ?? '',
       userName:
           _string(source, const [
             'user_name',
@@ -118,10 +135,27 @@ class AuthUserDto {
       companyName: _string(source, const ['company_name', 'companyName']) ?? '',
       departmentName:
           _string(source, const ['department_name', 'departmentName']) ?? '',
-      roles: _stringList(source['roles']) ?? _stringList(json['roles']) ?? [],
+      roles:
+          _stringValues(source['roles'], const [
+            'role',
+            'code',
+            'key',
+            'name',
+          ]) ??
+          _stringValues(source['role'], const [
+            'role',
+            'code',
+            'key',
+            'name',
+          ]) ??
+          _stringValues(json['roles'], const ['role', 'code', 'key', 'name']) ??
+          _stringValues(json['role'], const ['role', 'code', 'key', 'name']) ??
+          [],
       permissions:
-          _stringList(source['permissions']) ??
-          _stringList(json['permissions']) ??
+          _permissionValues(source['permissions']) ??
+          _permissionValues(source['permission']) ??
+          _permissionValues(json['permissions']) ??
+          _permissionValues(json['permission']) ??
           [],
       mustChangePassword:
           _bool(source, const ['must_change_password', 'mustChangePassword']) ??
@@ -349,9 +383,12 @@ class PermissionsResponseDto {
     final data = _object(json['data']);
     return PermissionsResponseDto(
       permissions:
-          _stringList(json['permissions']) ??
-          _stringList(data?['permissions']) ??
-          _stringList(json['data']) ??
+          _permissionValues(json['permissions']) ??
+          _permissionValues(json['permission']) ??
+          _permissionValues(data?['permissions']) ??
+          _permissionValues(data?['items']) ??
+          _permissionValues(data?['data']) ??
+          _permissionValues(json['data']) ??
           [],
     );
   }
@@ -2985,15 +3022,15 @@ List<DashboardSummaryCardDto> _dashboardCards(Map<String, dynamic> data) {
   const knownCards = {
     'my_requests': ('My Requests', 'purchase_requests.view'),
     'myRequests': ('My Requests', 'purchase_requests.view'),
-    'pending_approvals': ('Pending Approvals', 'approvals.manage'),
-    'pendingApprovals': ('Pending Approvals', 'approvals.manage'),
+    'pending_approvals': ('Pending Approvals', 'approvals.view'),
+    'pendingApprovals': ('Pending Approvals', 'approvals.view'),
     'purchase_orders': ('Purchase Orders', 'purchase_orders.view'),
     'purchaseOrders': ('Purchase Orders', 'purchase_orders.view'),
     'invoices': ('Invoices', 'invoices.view'),
-    'total_spend': ('Total Spend', 'finance.view'),
-    'totalSpend': ('Total Spend', 'finance.view'),
-    'due_amount': ('Due Amount', 'finance.view'),
-    'dueAmount': ('Due Amount', 'finance.view'),
+    'total_spend': ('Total Spend', 'reports.view'),
+    'totalSpend': ('Total Spend', 'reports.view'),
+    'due_amount': ('Due Amount', 'invoices.view'),
+    'dueAmount': ('Due Amount', 'invoices.view'),
   };
 
   return [
@@ -3173,21 +3210,32 @@ bool? _bool(Map<String, dynamic> json, List<String> keys) {
   return null;
 }
 
-List<String>? _stringList(Object? value) {
+List<String>? _stringValues(Object? value, List<String> objectKeys) {
   if (value is List) {
     return [
       for (final item in value)
         if (item is String)
           item
         else if (item is Map)
-          _string(Map<String, dynamic>.from(item), const [
-                'permission',
-                'code',
-                'key',
-                'name',
-              ]) ??
-              '',
+          _string(Map<String, dynamic>.from(item), objectKeys) ?? '',
     ].where((item) => item.trim().isNotEmpty).toList();
   }
+  if (value is String && value.trim().isNotEmpty) return [value];
+  if (value is Map) {
+    final item = _string(Map<String, dynamic>.from(value), objectKeys);
+    if (item != null && item.trim().isNotEmpty) return [item];
+  }
   return null;
+}
+
+List<String>? _permissionValues(Object? value) {
+  return _stringValues(value, const [
+    'permission',
+    'permissionKey',
+    'permission_key',
+    'code',
+    'key',
+    'name',
+    'value',
+  ]);
 }

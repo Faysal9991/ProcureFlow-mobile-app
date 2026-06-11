@@ -9,6 +9,8 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/status_chip.dart';
 import '../../attachments/domain/attachment_entity.dart';
 import '../../attachments/presentation/attachment_section.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../domain/rfq_entity.dart';
 import 'rfq_controller.dart';
@@ -38,6 +40,7 @@ class _RfqDetailsScreenState extends ConsumerState<RfqDetailsScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(rfqControllerProvider);
     final rfq = state.selectedRfq;
+    final session = ref.watch(authControllerProvider).session;
 
     return AppScaffold(
       title: 'RFQ Details',
@@ -71,18 +74,22 @@ class _RfqDetailsScreenState extends ConsumerState<RfqDetailsScreen> {
               _RfqActions(
                 rfq: rfq,
                 isMutating: state.isMutating,
+                canManage: PermissionPolicy.canManageRfq(session),
                 onOpen: () => _open(rfq),
               ),
               const SizedBox(height: 16),
               AttachmentSection(
                 entityType: AttachmentEntityType.rfq,
                 entityId: rfq.localId,
+                canView: PermissionPolicy.canViewAttachments(session: session),
                 canUpload:
                     rfq.normalizedStatus != RfqStatus.completed &&
-                    rfq.normalizedStatus != RfqStatus.cancelled,
+                    rfq.normalizedStatus != RfqStatus.cancelled &&
+                    PermissionPolicy.canUploadAttachments(session: session),
                 canDelete:
                     rfq.normalizedStatus != RfqStatus.completed &&
-                    rfq.normalizedStatus != RfqStatus.cancelled,
+                    rfq.normalizedStatus != RfqStatus.cancelled &&
+                    PermissionPolicy.canDeleteAttachments(session: session),
               ),
             ],
           ],
@@ -96,6 +103,16 @@ class _RfqDetailsScreenState extends ConsumerState<RfqDetailsScreen> {
   }
 
   Future<void> _open(Rfq rfq) async {
+    if (!PermissionPolicy.canManageRfq(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     if (rfq.vendorCount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -283,17 +300,19 @@ class _RfqActions extends StatelessWidget {
   const _RfqActions({
     required this.rfq,
     required this.isMutating,
+    required this.canManage,
     required this.onOpen,
   });
 
   final Rfq rfq;
   final bool isMutating;
+  final bool canManage;
   final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
     final actions = <Widget>[];
-    if (rfq.canAddVendors) {
+    if (rfq.canAddVendors && canManage) {
       actions.add(
         OutlinedButton.icon(
           key: const Key('addRfqVendorsButton'),
@@ -305,7 +324,7 @@ class _RfqActions extends StatelessWidget {
         ),
       );
     }
-    if (rfq.canOpen) {
+    if (rfq.canOpen && canManage) {
       actions.add(
         FilledButton.icon(
           key: const Key('openRfqButton'),
@@ -315,7 +334,7 @@ class _RfqActions extends StatelessWidget {
         ),
       );
     }
-    if (rfq.canAddQuotations) {
+    if (rfq.canAddQuotations && canManage) {
       actions.add(
         FilledButton.icon(
           key: const Key('addRfqQuotationButton'),

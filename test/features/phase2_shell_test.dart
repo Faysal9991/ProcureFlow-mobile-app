@@ -144,6 +144,27 @@ void main() {
     expect(find.text('Approvals'), findsNothing);
   });
 
+  testWidgets('app scaffold uses navigation rail on wide screens', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          home: AppScaffold(title: 'Wide Layout', child: Text('Body')),
+        ),
+      ),
+    );
+
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.text('Wide Layout'), findsOneWidget);
+  });
+
   testWidgets('login redirects to dashboard', (tester) async {
     final authController = AuthController(_FakeAuthRepository());
     await authController.restoreSession();
@@ -271,6 +292,11 @@ void main() {
     expect(find.text('Demo Company'), findsOneWidget);
     expect(find.text('Operations'), findsOneWidget);
 
+    await tester.scrollUntilVisible(
+      find.text('Logout'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('Logout'));
     await tester.pumpAndSettle();
 

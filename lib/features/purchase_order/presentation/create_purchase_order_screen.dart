@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../../rfq/domain/rfq_entity.dart';
 import '../../rfq/presentation/rfq_controller.dart';
@@ -111,6 +113,16 @@ class _CreatePurchaseOrderScreenState
   }
 
   Future<void> _create(RfqComparisonQuotation quotation) async {
+    if (!PermissionPolicy.canCreatePurchaseOrder(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     final order = await ref
         .read(purchaseOrderControllerProvider.notifier)
         .create(

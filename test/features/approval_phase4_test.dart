@@ -36,7 +36,7 @@ const _approverSession = AuthSession(
 
 void main() {
   test('approval menu enables for backend roles and approval permissions', () {
-    for (final role in ['MANAGER', 'COMPANY_ADMIN', 'PROCUREMENT', 'FINANCE']) {
+    for (final role in ['MANAGER', 'COMPANY_ADMIN', 'PROCUREMENT']) {
       final session = _approverSession.copyWith(roles: [role]);
       final approvals = visiblePhase2MenuItems(
         session,
@@ -44,6 +44,12 @@ void main() {
 
       expect(approvals.single.isImplemented, isTrue);
     }
+
+    final financeSession = _approverSession.copyWith(roles: ['FINANCE']);
+    expect(
+      visiblePhase2MenuItems(financeSession).map((item) => item.title),
+      isNot(contains('Approvals')),
+    );
 
     final permissionSession = _approverSession.copyWith(
       roles: ['EMPLOYEE'],

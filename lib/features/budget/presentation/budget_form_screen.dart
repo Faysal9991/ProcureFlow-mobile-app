@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../domain/budget_entity.dart';
 import 'budget_controller.dart';
@@ -210,6 +212,18 @@ class _BudgetFormScreenState extends ConsumerState<BudgetFormScreen> {
   }
 
   Future<void> _save() async {
+    final session = ref.read(authControllerProvider).session;
+    final allowed = _isEdit
+        ? PermissionPolicy.canManageBudgets(session)
+        : PermissionPolicy.canCreateBudget(session);
+    if (!allowed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
     if (_startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -9,6 +9,7 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/status_chip.dart';
 import '../../attachments/domain/attachment_entity.dart';
 import '../../attachments/presentation/attachment_section.dart';
+import '../../auth/domain/permission_policy.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../../invoice/domain/invoice_entity.dart';
@@ -44,17 +45,11 @@ class _PurchaseOrderDetailsScreenState
     final state = ref.watch(purchaseOrderControllerProvider);
     final order = state.selectedOrder;
     final session = ref.watch(authControllerProvider).session;
-    final canCreateInvoice =
-        session?.hasAnyPermission(['invoices.create', 'invoices.manage']) ??
-        false;
-    final canViewInvoice =
-        (session?.hasAnyPermission([
-              'invoices.view',
-              'invoices.create',
-              'invoices.manage',
-            ]) ??
-            false) ||
-        (session?.hasAnyRole(['FINANCE', 'COMPANY_ADMIN']) ?? false);
+    final canCreateInvoice = PermissionPolicy.canCreateInvoice(session);
+    final canViewInvoice = PermissionPolicy.canViewInvoices(session);
+    final canManagePurchaseOrders = PermissionPolicy.canManagePurchaseOrders(
+      session,
+    );
     final invoiceForOrder = order == null
         ? null
         : ref.watch(invoiceForPurchaseOrderProvider(order.localId));
@@ -87,6 +82,7 @@ class _PurchaseOrderDetailsScreenState
                 order: order,
                 isMutating: state.isMutating,
                 invoiceForOrder: invoiceForOrder,
+                canManagePurchaseOrders: canManagePurchaseOrders,
                 canCreateInvoice: canCreateInvoice,
                 canViewInvoice: canViewInvoice,
                 onIssue: () => _confirmLifecycle(
@@ -131,8 +127,15 @@ class _PurchaseOrderDetailsScreenState
               AttachmentSection(
                 entityType: AttachmentEntityType.purchaseOrder,
                 entityId: order.localId,
-                canUpload: !order.isClosed && !order.isCancelled,
-                canDelete: !order.isClosed && !order.isCancelled,
+                canView: PermissionPolicy.canViewAttachments(session: session),
+                canUpload:
+                    !order.isClosed &&
+                    !order.isCancelled &&
+                    PermissionPolicy.canUploadAttachments(session: session),
+                canDelete:
+                    !order.isClosed &&
+                    !order.isCancelled &&
+                    PermissionPolicy.canDeleteAttachments(session: session),
               ),
             ],
           ],
@@ -154,6 +157,16 @@ class _PurchaseOrderDetailsScreenState
     required Future<PurchaseOrder?> Function() action,
     required String successMessage,
   }) async {
+    if (!PermissionPolicy.canManagePurchaseOrders(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -305,6 +318,7 @@ class _PurchaseOrderActions extends StatelessWidget {
     required this.order,
     required this.isMutating,
     required this.invoiceForOrder,
+    required this.canManagePurchaseOrders,
     required this.canCreateInvoice,
     required this.canViewInvoice,
     required this.onIssue,
@@ -316,6 +330,7 @@ class _PurchaseOrderActions extends StatelessWidget {
   final PurchaseOrder order;
   final bool isMutating;
   final AsyncValue<Invoice?>? invoiceForOrder;
+  final bool canManagePurchaseOrders;
   final bool canCreateInvoice;
   final bool canViewInvoice;
   final VoidCallback onIssue;
@@ -326,7 +341,7 @@ class _PurchaseOrderActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = <Widget>[
-      if (order.canEdit)
+      if (order.canEdit && canManagePurchaseOrders)
         FilledButton.icon(
           key: const Key('editPurchaseOrderButton'),
           onPressed: isMutating
@@ -335,28 +350,28 @@ class _PurchaseOrderActions extends StatelessWidget {
           icon: const Icon(AppIcons.description),
           label: const Text('Edit'),
         ),
-      if (order.canIssue)
+      if (order.canIssue && canManagePurchaseOrders)
         FilledButton.icon(
           key: const Key('issuePurchaseOrderButton'),
           onPressed: isMutating ? null : onIssue,
           icon: const Icon(AppIcons.send),
           label: const Text('Issue'),
         ),
-      if (order.canReceive)
+      if (order.canReceive && canManagePurchaseOrders)
         FilledButton.icon(
           key: const Key('receivePurchaseOrderButton'),
           onPressed: isMutating ? null : onReceive,
           icon: const Icon(AppIcons.check),
           label: const Text('Receive'),
         ),
-      if (order.canClose)
+      if (order.canClose && canManagePurchaseOrders)
         FilledButton.icon(
           key: const Key('closePurchaseOrderButton'),
           onPressed: isMutating ? null : onClose,
           icon: const Icon(AppIcons.circleCheck),
           label: const Text('Close'),
         ),
-      if (order.canCancel)
+      if (order.canCancel && canManagePurchaseOrders)
         OutlinedButton.icon(
           key: const Key('cancelPurchaseOrderButton'),
           onPressed: isMutating ? null : onCancel,

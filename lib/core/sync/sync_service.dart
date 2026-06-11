@@ -199,7 +199,7 @@ class SyncService {
         companyId: companyId,
         scope: 'purchase_requests',
       );
-      final response = await _api.pullSync(lastSyncedAt?.toIso8601String());
+      final response = await _api.pullSync(_rfc3339(lastSyncedAt));
       for (final request in response.purchaseRequests) {
         await _upsertPulledPurchaseRequest(
           companyId,
@@ -215,6 +215,10 @@ class SyncService {
     } catch (_) {
       // Pull refresh is best-effort; push results already updated local state.
     }
+  }
+
+  String? _rfc3339(DateTime? value) {
+    return value?.toUtc().toIso8601String();
   }
 
   Future<void> _upsertPulledPurchaseRequest(

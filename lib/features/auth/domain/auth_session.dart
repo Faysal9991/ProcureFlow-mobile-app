@@ -68,25 +68,17 @@ class AuthSession extends Equatable {
     return hasAnyRole(const ['COMPANY_ADMIN', 'ADMIN']);
   }
 
-  bool get canApprove =>
-      hasAnyRole(const [
-        'MANAGER',
-        'COMPANY_ADMIN',
-        'PROCUREMENT',
-        'FINANCE',
-      ]) ||
-      hasPermission('purchase_requests.approve') ||
-      hasPermission('approvals.manage');
+  bool get canApprove => hasPermission('purchase_requests.approve');
 
   bool get canCreatePurchaseOrder =>
-      hasRole('PROCUREMENT') ||
       hasPermission('purchase_orders.create') ||
       hasPermission('purchase_orders.manage');
 
   bool get canTrackFinance =>
-      hasRole('FINANCE') ||
-      hasPermission('finance.view') ||
-      hasPermission('finance.manage');
+      hasPermission('invoices.view') ||
+      hasPermission('payments.view') ||
+      hasPermission('budgets.view') ||
+      hasPermission('reports.view');
 
   String _normalizeRole(String role) {
     return role.trim().toUpperCase().replaceAll('-', '_');

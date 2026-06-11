@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme/app_theme.dart';
 import 'app_icons.dart';
+import 'status_chip.dart';
 
 export 'app_icons.dart';
 
@@ -13,12 +14,14 @@ class AppScreenListView extends StatelessWidget {
     this.padding = AppInsets.screen,
     this.physics,
     this.shrinkWrap = false,
+    this.maxContentWidth = AppBreakpoints.contentMaxWidth,
   });
 
   final List<Widget> children;
   final EdgeInsetsGeometry padding;
   final ScrollPhysics? physics;
   final bool shrinkWrap;
+  final double maxContentWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +32,10 @@ class AppScreenListView extends StatelessWidget {
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
         for (var index = 0; index < children.length; index++)
-          AppAnimatedEntry(index: index, child: children[index]),
+          _ConstrainedScreenChild(
+            maxWidth: maxContentWidth,
+            child: AppAnimatedEntry(index: index, child: children[index]),
+          ),
       ],
     );
   }
@@ -42,23 +48,48 @@ class AppSeparatedListView extends StatelessWidget {
     required this.itemBuilder,
     this.separatorBuilder,
     this.padding = AppInsets.screen,
+    this.maxContentWidth = AppBreakpoints.contentMaxWidth,
   });
 
   final int itemCount;
   final IndexedWidgetBuilder itemBuilder;
   final IndexedWidgetBuilder? separatorBuilder;
   final EdgeInsetsGeometry padding;
+  final double maxContentWidth;
 
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
       padding: padding,
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      itemBuilder: (context, index) =>
-          AppAnimatedEntry(index: index, child: itemBuilder(context, index)),
+      itemBuilder: (context, index) => _ConstrainedScreenChild(
+        maxWidth: maxContentWidth,
+        child: AppAnimatedEntry(
+          index: index,
+          child: itemBuilder(context, index),
+        ),
+      ),
       separatorBuilder:
           separatorBuilder ?? (context, index) => const SizedBox(height: 10),
       itemCount: itemCount,
+    );
+  }
+}
+
+class _ConstrainedScreenChild extends StatelessWidget {
+  const _ConstrainedScreenChild({required this.maxWidth, required this.child});
+
+  final double maxWidth;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: SizedBox(width: double.infinity, child: child),
+      ),
     );
   }
 }
@@ -128,6 +159,291 @@ class AppEmptyCard extends StatelessWidget {
           Expanded(child: Text(message)),
         ],
       ),
+    );
+  }
+}
+
+class AppLoadingCard extends StatelessWidget {
+  const AppLoadingCard({super.key, this.message = 'Loading...'});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSectionCard(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AppErrorCard extends StatelessWidget {
+  const AppErrorCard({
+    super.key,
+    required this.message,
+    this.onRetry,
+    this.retryLabel = 'Retry',
+  });
+
+  final String message;
+  final VoidCallback? onRetry;
+  final String retryLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSectionCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(AppIcons.info, size: 22),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message)),
+          if (onRetry != null) ...[
+            const SizedBox(width: 10),
+            TextButton(onPressed: onRetry, child: Text(retryLabel)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class AppModuleCard extends StatelessWidget {
+  const AppModuleCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.badge,
+    this.onTap,
+    this.enabled = true,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String? badge;
+  final VoidCallback? onTap;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = enabled
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurface.withValues(alpha: 0.42);
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _AppIconBadge(icon: icon, color: color),
+            const Spacer(),
+            if (badge != null && badge!.trim().isNotEmpty)
+              StatusChip(status: badge!),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: enabled ? null : color,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(
+              alpha: enabled ? 0.68 : 0.46,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    return Opacity(
+      opacity: enabled ? 1 : 0.66,
+      child: AppSectionCard(
+        padding: const EdgeInsets.all(14),
+        onTap: enabled ? onTap : null,
+        child: content,
+      ),
+    );
+  }
+}
+
+class AppSummaryCard extends StatelessWidget {
+  const AppSummaryCard({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppSectionCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _AppIconBadge(icon: icon),
+          const Spacer(),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AppFilterChipBar extends StatelessWidget {
+  const AppFilterChipBar({
+    super.key,
+    required this.filters,
+    this.onClear,
+    this.clearLabel = 'Clear filters',
+  });
+
+  final List<String> filters;
+  final VoidCallback? onClear;
+  final String clearLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeFilters = [
+      for (final filter in filters)
+        if (filter.trim().isNotEmpty) filter.trim(),
+    ];
+    if (activeFilters.isEmpty && onClear == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (final filter in activeFilters)
+          Chip(
+            label: Text(filter),
+            avatar: const Icon(AppIcons.circleCheck, size: 16),
+          ),
+        if (onClear != null)
+          TextButton.icon(
+            onPressed: onClear,
+            icon: const Icon(AppIcons.x, size: 18),
+            label: Text(clearLabel),
+          ),
+      ],
+    );
+  }
+}
+
+class AppFixedActionBar extends StatelessWidget {
+  const AppFixedActionBar({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    if (children.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: theme.colorScheme.outline.withValues(alpha: 0.18),
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          child: Row(
+            children: [
+              for (var index = 0; index < children.length; index++) ...[
+                if (index > 0) const SizedBox(width: 10),
+                Expanded(child: children[index]),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AppStepFormShell extends StatelessWidget {
+  const AppStepFormShell({
+    super.key,
+    required this.currentStep,
+    required this.totalSteps,
+    required this.title,
+    required this.child,
+  });
+
+  final int currentStep;
+  final int totalSteps;
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final clampedTotal = totalSteps < 1 ? 1 : totalSteps;
+    final clampedStep = currentStep.clamp(1, clampedTotal);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Step $clampedStep of $clampedTotal',
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+        const SizedBox(height: 6),
+        LinearProgressIndicator(value: clampedStep / clampedTotal),
+        const SizedBox(height: 12),
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 12),
+        child,
+      ],
     );
   }
 }
@@ -364,13 +680,14 @@ class AppInfoRow extends StatelessWidget {
 }
 
 class _AppIconBadge extends StatelessWidget {
-  const _AppIconBadge({required this.icon});
+  const _AppIconBadge({required this.icon, this.color});
 
   final IconData icon;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
+    final color = this.color ?? Theme.of(context).colorScheme.primary;
     final theme = Theme.of(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 240),

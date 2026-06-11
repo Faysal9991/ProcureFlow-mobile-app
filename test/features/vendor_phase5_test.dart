@@ -10,7 +10,9 @@ import 'package:procurement_management/core/database/app_database.dart';
 import 'package:procurement_management/core/database/daos/procurement_dao.dart';
 import 'package:procurement_management/core/sync/sync_status.dart';
 import 'package:procurement_management/core/widgets/app_scaffold.dart';
+import 'package:procurement_management/features/auth/domain/auth_repository.dart';
 import 'package:procurement_management/features/auth/domain/auth_session.dart';
+import 'package:procurement_management/features/auth/presentation/auth_controller.dart';
 import 'package:procurement_management/features/dashboard/domain/app_menu_item.dart';
 import 'package:procurement_management/features/vendor/data/vendor_repository_impl.dart';
 import 'package:procurement_management/features/vendor/domain/vendor_entity.dart';
@@ -237,6 +239,12 @@ void main() {
   });
 
   testWidgets('VendorFormScreen validates and creates vendor', (tester) async {
+    final authController = await _authController(
+      _vendorSession.copyWith(
+        roles: const [],
+        permissions: const ['vendors.view', 'vendors.create'],
+      ),
+    );
     final repository = _FakeVendorRepository();
     final router = GoRouter(
       initialLocation: '/vendors/new',
@@ -256,7 +264,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [vendorRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          authControllerProvider.overrideWith((ref) => authController),
+          vendorRepositoryProvider.overrideWithValue(repository),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -291,6 +302,12 @@ void main() {
   testWidgets('VendorFormScreen loads edit data and updates vendor', (
     tester,
   ) async {
+    final authController = await _authController(
+      _vendorSession.copyWith(
+        roles: const [],
+        permissions: const ['vendors.view', 'vendors.manage'],
+      ),
+    );
     final repository = _FakeVendorRepository();
     final router = GoRouter(
       initialLocation: '/vendors/vendor-1/edit',
@@ -312,7 +329,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [vendorRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          authControllerProvider.overrideWith((ref) => authController),
+          vendorRepositoryProvider.overrideWithValue(repository),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -334,6 +354,12 @@ void main() {
   testWidgets('VendorDetailsScreen renders fields and deletes after confirm', (
     tester,
   ) async {
+    final authController = await _authController(
+      _vendorSession.copyWith(
+        roles: const [],
+        permissions: const ['vendors.view', 'vendors.manage'],
+      ),
+    );
     final repository = _FakeVendorRepository();
     final router = GoRouter(
       initialLocation: '/vendors/vendor-1',
@@ -354,7 +380,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [vendorRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          authControllerProvider.overrideWith((ref) => authController),
+          vendorRepositoryProvider.overrideWithValue(repository),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -425,6 +454,14 @@ VendorDto _vendorDto({String id = 'vendor-1', String name = 'Acme Supplies'}) {
   );
 }
 
+Future<AuthController> _authController(AuthSession session) async {
+  final controller = AuthController(
+    _FakeAuthRepository(restoredSession: session),
+  );
+  await controller.restoreSession();
+  return controller;
+}
+
 class _FakeVendorApi implements ProcurementApi {
   Map<String, Object?>? lastListQuery;
   Map<String, dynamic>? lastCreatePayload;
@@ -480,6 +517,33 @@ class _FakeVendorApi implements ProcurementApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeAuthRepository implements AuthRepository {
+  _FakeAuthRepository({required this.restoredSession});
+
+  AuthSession? restoredSession;
+
+  @override
+  Future<AuthSession> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthSession> login({required String email, required String password}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> logout() async {
+    restoredSession = null;
+  }
+
+  @override
+  Future<AuthSession?> restoreSession() async => restoredSession;
 }
 
 class _FakeVendorRepository implements VendorRepository {

@@ -48,21 +48,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: AppScreenListView(
           children: [
             _DashboardHeader(
-              firstName: firstName.isEmpty ? 'User' : firstName,
+              name: firstName.isEmpty ? 'User' : firstName,
+              companyName: session?.companyName ?? 'Company',
+              accessProfile: state.accessProfile,
               unreadCount: state.unreadCount,
             ),
             const SizedBox(height: 16),
             if (state.errorMessage != null)
-              AppEmptyCard(message: state.errorMessage!)
+              AppErrorCard(message: state.errorMessage!, onRetry: _load)
             else if (state.isLoading && state.cards.isEmpty)
-              const AppSectionCard(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(18),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-              )
+              const AppLoadingCard(message: 'Loading dashboard...')
             else
               _SummaryCards(cards: state.cards),
             const SizedBox(height: 16),
@@ -72,6 +67,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               activities: state.activities,
               onComingSoon: _showComingSoon,
             ),
+            if (_pendingSyncValue(state.cards) != null &&
+                _pendingSyncValue(state.cards)! > 0) ...[
+              const SizedBox(height: 16),
+              _SyncStatusCard(pendingCount: _pendingSyncValue(state.cards)!),
+            ],
           ],
         ),
       ),
@@ -91,9 +91,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 }
 
 class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader({required this.firstName, required this.unreadCount});
+  const _DashboardHeader({
+    required this.name,
+    required this.companyName,
+    required this.accessProfile,
+    required this.unreadCount,
+  });
 
-  final String firstName;
+  final String name;
+  final String companyName;
+  final DashboardAccessProfile accessProfile;
   final int unreadCount;
 
   @override
@@ -110,7 +117,7 @@ class _DashboardHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${_greeting()}, $firstName',
+                  '${_greeting()}, $name',
                   style: theme.textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 6),
@@ -120,6 +127,20 @@ class _DashboardHeader extends StatelessWidget {
                     color: colorScheme.onSurface.withValues(alpha: 0.68),
                   ),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  '${accessProfile.primaryLabel} / $companyName',
+                  style: theme.textTheme.bodySmall,
+                ),
+                if (accessProfile.additionalAccessLabel.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Additional access: ${accessProfile.additionalAccessLabel}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
               ],
             ),
           ),
@@ -170,30 +191,10 @@ class _SummaryCards extends StatelessWidget {
               SizedBox(
                 width: tileWidth,
                 height: 132,
-                child: AppSectionCard(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _IconBadge(icon: _cardIcon(card.key)),
-                      const Spacer(),
-                      Text(
-                        card.value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        card.label,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
+                child: AppSummaryCard(
+                  icon: _cardIcon(card.key),
+                  label: card.label,
+                  value: card.value,
                 ),
               ),
           ],
@@ -224,53 +225,101 @@ class _QuickMenu extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Quick Menu', style: Theme.of(context).textTheme.titleMedium),
+        Text('Quick Actions', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
-        if (state.menuItems.isEmpty)
+        if (state.modules.isEmpty && state.quickActions.isEmpty)
           const AppEmptyCard(message: 'No menu items available.')
         else
-          for (final item in state.menuItems)
-            _MenuTile(item: item, onComingSoon: onComingSoon),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 10.0;
+              final columns = constraints.maxWidth >= 840
+                  ? 3
+                  : constraints.maxWidth >= 560
+                  ? 2
+                  : 1;
+              final tileWidth =
+                  (constraints.maxWidth - spacing * (columns - 1)) / columns;
+
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  for (final item in _tiles())
+                    SizedBox(
+                      width: tileWidth,
+                      height: 138,
+                      child: AppModuleCard(
+                        icon: item.icon,
+                        title: item.title,
+                        subtitle: item.subtitle,
+                        badge: item.badge,
+                        enabled: item.isImplemented,
+                        onTap: () => item.isImplemented
+                            ? context.go(item.route)
+                            : onComingSoon(item.title),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
       ],
     );
   }
+
+  List<_DashboardTileData> _tiles() {
+    return [
+      for (final action in state.quickActions)
+        _DashboardTileData(
+          title: action.title,
+          subtitle: action.subtitle,
+          route: action.route,
+          icon: action.icon,
+          badge: _badgeFor(action.countKeys),
+          isImplemented: action.isImplemented,
+        ),
+      for (final module in state.modules)
+        _DashboardTileData(
+          title: module.title,
+          subtitle: module.subtitle,
+          route: module.route,
+          icon: module.icon,
+          badge: _badgeFor(module.countKeys),
+          isImplemented: module.isImplemented,
+        ),
+    ];
+  }
+
+  String? _badgeFor(List<String> keys) {
+    if (keys.isEmpty) return null;
+    for (final key in keys) {
+      for (final card in state.cards) {
+        if (card.key == key && card.value.trim().isNotEmpty) {
+          return card.value;
+        }
+      }
+    }
+    return null;
+  }
 }
 
-class _MenuTile extends StatelessWidget {
-  const _MenuTile({required this.item, required this.onComingSoon});
+class _DashboardTileData {
+  const _DashboardTileData({
+    required this.title,
+    required this.subtitle,
+    required this.route,
+    required this.icon,
+    required this.isImplemented,
+    this.badge,
+  });
 
-  final AppMenuItem item;
-  final ValueChanged<String> onComingSoon;
-
-  @override
-  Widget build(BuildContext context) {
-    final tile = AppListTileCard(
-      margin: const EdgeInsets.only(bottom: 10),
-      leading: _IconBadge(icon: _menuIcon(item.title)),
-      title: Text(item.title),
-      subtitle: item.isImplemented ? null : const Text('Coming Soon'),
-      trailing: item.isImplemented
-          ? const Icon(AppIcons.chevronRight)
-          : const _ComingSoonChip(),
-      onTap: item.isImplemented
-          ? () => context.go(item.route)
-          : () => onComingSoon(item.title),
-    );
-
-    return item.isImplemented ? tile : Opacity(opacity: 0.72, child: tile);
-  }
-
-  IconData _menuIcon(String title) {
-    return switch (title) {
-      'Approvals' => AppIcons.approval,
-      'Vendors' => AppIcons.vendors,
-      'RFQ' => AppIcons.compare,
-      'Purchase Orders' => AppIcons.order,
-      'Invoices' || 'Budgets' => AppIcons.money,
-      'Reports' => AppIcons.history,
-      _ => AppIcons.list,
-    };
-  }
+  final String title;
+  final String subtitle;
+  final String route;
+  final IconData icon;
+  final bool isImplemented;
+  final String? badge;
 }
 
 class _RecentActivity extends StatelessWidget {
@@ -334,27 +383,46 @@ class _RecentActivity extends StatelessWidget {
   }
 }
 
-class _ComingSoonChip extends StatelessWidget {
-  const _ComingSoonChip();
+class _SyncStatusCard extends StatelessWidget {
+  const _SyncStatusCard({required this.pendingCount});
+
+  final int pendingCount;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: AppRadius.controlBorder,
-      ),
-      child: Text(
-        'Coming Soon',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: colorScheme.primary,
-          fontWeight: FontWeight.w800,
-        ),
+    return AppSectionCard(
+      onTap: () => context.go('/sync-status'),
+      child: Row(
+        children: [
+          const _IconBadge(icon: AppIcons.sync),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sync Status',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 2),
+                Text('$pendingCount item(s) waiting to sync'),
+              ],
+            ),
+          ),
+          const Icon(AppIcons.chevronRight),
+        ],
       ),
     );
   }
+}
+
+int? _pendingSyncValue(List<DashboardSummaryCard> cards) {
+  for (final card in cards) {
+    if (card.key == 'pending_sync' || card.key == 'pendingSync') {
+      return int.tryParse(card.value.replaceAll(RegExp(r'[^0-9]'), ''));
+    }
+  }
+  return null;
 }
 
 class _IconBadge extends StatelessWidget {

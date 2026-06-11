@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../domain/purchase_order_entity.dart';
 import 'purchase_order_controller.dart';
@@ -73,11 +75,15 @@ class _PurchaseOrderEditScreenState
               children: [AppEmptyCard(message: 'Purchase order not found.')],
             );
           }
-          if (!order.canEdit) {
+          if (!order.canEdit ||
+              !PermissionPolicy.canManagePurchaseOrders(
+                ref.watch(authControllerProvider).session,
+              )) {
             return const AppScreenListView(
               children: [
                 AppEmptyCard(
-                  message: 'Only draft purchase orders can be edited.',
+                  message:
+                      'Only permitted users can edit draft purchase orders.',
                 ),
               ],
             );
@@ -101,6 +107,16 @@ class _PurchaseOrderEditScreenState
   }
 
   Future<void> _save(PurchaseOrder order) async {
+    if (!PermissionPolicy.canManagePurchaseOrders(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     final updated = await ref
         .read(purchaseOrderControllerProvider.notifier)
         .update(

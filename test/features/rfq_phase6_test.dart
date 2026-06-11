@@ -10,7 +10,9 @@ import 'package:procurement_management/core/database/app_database.dart'
 import 'package:procurement_management/core/database/daos/procurement_dao.dart';
 import 'package:procurement_management/core/sync/sync_status.dart';
 import 'package:procurement_management/core/widgets/app_scaffold.dart';
+import 'package:procurement_management/features/auth/domain/auth_repository.dart';
 import 'package:procurement_management/features/auth/domain/auth_session.dart';
+import 'package:procurement_management/features/auth/presentation/auth_controller.dart';
 import 'package:procurement_management/features/dashboard/domain/app_menu_item.dart';
 import 'package:procurement_management/features/rfq/data/rfq_repository_impl.dart';
 import 'package:procurement_management/features/rfq/domain/rfq_entity.dart';
@@ -302,9 +304,36 @@ void main() {
     expect(repository.lastFilters?.purchaseRequestId, 'pr-1');
   });
 
+  testWidgets('RfqListScreen filter card lays out on phone width', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final repository = _FakeRfqRepository(rfq: _rfq());
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [rfqRepositoryProvider.overrideWithValue(repository)],
+        child: const MaterialApp(
+          home: RfqListScreen(showBottomNavigation: false),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('rfqStatusFilter-ANY')), findsOneWidget);
+    expect(find.text('RFQ-001'), findsOneWidget);
+  });
+
   testWidgets('RfqDetailsScreen blocks opening RFQ before vendor assignment', (
     tester,
   ) async {
+    final authController = await _authController();
     tester.view.physicalSize = const Size(900, 1200);
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
@@ -315,7 +344,10 @@ void main() {
     final repository = _FakeRfqRepository(rfq: _rfq(vendorCount: 0));
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [rfqRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          authControllerProvider.overrideWith((ref) => authController),
+          rfqRepositoryProvider.overrideWithValue(repository),
+        ],
         child: const MaterialApp(
           home: RfqDetailsScreen(rfqId: 'rfq-1', showBottomNavigation: false),
         ),
@@ -338,6 +370,7 @@ void main() {
   testWidgets('QuotationEntryScreen only exposes assigned vendors', (
     tester,
   ) async {
+    final authController = await _authController();
     tester.view.physicalSize = const Size(900, 1200);
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
@@ -354,7 +387,10 @@ void main() {
     );
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [rfqRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          authControllerProvider.overrideWith((ref) => authController),
+          rfqRepositoryProvider.overrideWithValue(repository),
+        ],
         child: const MaterialApp(
           home: QuotationEntryScreen(
             rfqId: 'rfq-1',
@@ -384,6 +420,7 @@ void main() {
   testWidgets('RfqVendorAssignmentScreen requires at least one vendor', (
     tester,
   ) async {
+    final authController = await _authController();
     final rfqRepository = _FakeRfqRepository(rfq: _rfq(vendors: const []));
     final vendorRepository = _FakeVendorRepository([
       _vendor(id: 'vendor-1', name: 'Assigned Co'),
@@ -391,6 +428,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          authControllerProvider.overrideWith((ref) => authController),
           rfqRepositoryProvider.overrideWithValue(rfqRepository),
           vendorRepositoryProvider.overrideWithValue(vendorRepository),
         ],
@@ -449,6 +487,19 @@ Rfq _rfq({
     vendors: resolvedVendors,
     quotations: resolvedQuotations,
   );
+}
+
+Future<AuthController> _authController() async {
+  final controller = AuthController(
+    _FakeAuthRepository(
+      restoredSession: _rfqSession.copyWith(
+        roles: const [],
+        permissions: const ['rfq.view', 'rfq.manage'],
+      ),
+    ),
+  );
+  await controller.restoreSession();
+  return controller;
 }
 
 RfqVendor _rfqVendor({
@@ -761,6 +812,33 @@ class _FakeRfqApi implements ProcurementApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeAuthRepository implements AuthRepository {
+  _FakeAuthRepository({required this.restoredSession});
+
+  AuthSession? restoredSession;
+
+  @override
+  Future<AuthSession> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthSession> login({required String email, required String password}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> logout() async {
+    restoredSession = null;
+  }
+
+  @override
+  Future<AuthSession?> restoreSession() async => restoredSession;
 }
 
 class _FakeRfqRepository implements RfqRepository {

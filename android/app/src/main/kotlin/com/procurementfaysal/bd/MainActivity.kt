@@ -1,4 +1,4 @@
-package com.example.procurement_management
+package com.procurementfaysal.bd
 
 import io.flutter.embedding.android.FlutterActivity
 

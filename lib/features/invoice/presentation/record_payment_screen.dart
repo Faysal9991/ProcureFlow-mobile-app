@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../auth/domain/permission_policy.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../domain/invoice_entity.dart';
@@ -60,9 +61,7 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
     final paymentState = ref.watch(paymentControllerProvider);
     final invoice = invoiceState.selectedInvoice;
     final session = ref.watch(authControllerProvider).session;
-    final canRecord =
-        session?.hasAnyPermission(['payments.create', 'payments.manage']) ??
-        false;
+    final canRecord = PermissionPolicy.canCreatePayment(session);
 
     return AppScaffold(
       title: 'Record Payment',
@@ -120,6 +119,16 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
   }
 
   Future<void> _record(Invoice invoice) async {
+    if (!PermissionPolicy.canCreatePayment(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     setState(() => _submitted = true);
     final paymentDate = DateTime.tryParse(_paymentDateController.text.trim());
     final amount = double.tryParse(_amountController.text.trim()) ?? 0;

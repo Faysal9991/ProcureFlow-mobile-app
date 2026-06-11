@@ -17,12 +17,14 @@ class AttachmentSection extends ConsumerStatefulWidget {
     super.key,
     required this.entityType,
     required this.entityId,
+    this.canView = true,
     this.canUpload = true,
     this.canDelete = true,
   });
 
   final String entityType;
   final String entityId;
+  final bool canView;
   final bool canUpload;
   final bool canDelete;
 
@@ -34,20 +36,27 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(_load);
+    if (widget.canView) {
+      Future.microtask(_load);
+    }
   }
 
   @override
   void didUpdateWidget(covariant AttachmentSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.entityId != widget.entityId ||
-        oldWidget.entityType != widget.entityType) {
+    if (widget.canView &&
+        (oldWidget.entityId != widget.entityId ||
+            oldWidget.entityType != widget.entityType ||
+            oldWidget.canView != widget.canView)) {
       Future.microtask(_load);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.canView) {
+      return const SizedBox.shrink();
+    }
     final state = ref.watch(attachmentControllerProvider);
     final date = DateFormat.yMMMd().add_jm();
     return AppSectionCard(
@@ -113,6 +122,7 @@ class _AttachmentSectionState extends ConsumerState<AttachmentSection> {
   }
 
   Future<void> _load() {
+    if (!widget.canView) return Future.value();
     return ref
         .read(attachmentControllerProvider.notifier)
         .load(entityType: widget.entityType, entityId: widget.entityId);

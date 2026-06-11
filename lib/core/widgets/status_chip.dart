@@ -3,6 +3,24 @@ import 'package:flutter/material.dart';
 import '../../app/theme/app_theme.dart';
 import 'app_icons.dart';
 
+enum StatusToneKind {
+  neutral,
+  info,
+  warning,
+  success,
+  error,
+  cancelled,
+  issued,
+  received,
+}
+
+class StatusTone {
+  const StatusTone({required this.kind, required this.color});
+
+  final StatusToneKind kind;
+  final Color color;
+}
+
 class StatusChip extends StatelessWidget {
   const StatusChip({super.key, required this.status});
 
@@ -11,59 +29,82 @@ class StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = _statusColor(context, status);
-    final label = status.trim().replaceAll('_', ' ').toUpperCase();
+    final tone = statusToneFor(context, status);
+    final label = statusLabel(status);
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
+        color: tone.color.withValues(alpha: 0.10),
         borderRadius: AppRadius.pillBorder,
-        border: Border.all(color: color.withValues(alpha: 0.20)),
+        border: Border.all(color: tone.color.withValues(alpha: 0.22)),
       ),
       child: Text(
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.labelSmall?.copyWith(
-          color: color,
+          color: tone.color,
           fontWeight: FontWeight.w800,
-          letterSpacing: 0.4,
+          letterSpacing: 0,
         ),
       ),
     );
   }
+}
 
-  Color _statusColor(BuildContext context, String value) {
-    final normalized = value.toLowerCase();
+StatusTone statusToneFor(BuildContext context, String value) {
+  final normalized = normalizeStatus(value);
+  final colorScheme = Theme.of(context).colorScheme;
 
-    if (normalized.contains('approved') ||
-        normalized.contains('synced') ||
-        normalized.contains('completed') ||
-        normalized.contains('success') ||
-        normalized.contains('paid')) {
-      return AppColors.success;
-    }
+  return switch (normalized) {
+    'DRAFT' => StatusTone(
+      kind: StatusToneKind.neutral,
+      color: colorScheme.onSurface.withValues(alpha: 0.58),
+    ),
+    'SUBMITTED' || 'OPEN' => const StatusTone(
+      kind: StatusToneKind.info,
+      color: AppColors.info,
+    ),
+    'PENDING' ||
+    'PENDING_SYNC' ||
+    'PROCESSING' ||
+    'WAITING' ||
+    'PARTIALLY_PAID' => const StatusTone(
+      kind: StatusToneKind.warning,
+      color: AppColors.warning,
+    ),
+    'APPROVED' || 'COMPLETED' || 'CLOSED' || 'PAID' || 'SYNCED' || 'SUCCESS' =>
+      const StatusTone(kind: StatusToneKind.success, color: AppColors.success),
+    'REJECTED' || 'FAILED' || 'ERROR' || 'OVERDUE' => const StatusTone(
+      kind: StatusToneKind.error,
+      color: AppColors.error,
+    ),
+    'CANCELLED' || 'CANCELED' => const StatusTone(
+      kind: StatusToneKind.cancelled,
+      color: AppColors.neutral800,
+    ),
+    'ISSUED' => const StatusTone(
+      kind: StatusToneKind.issued,
+      color: Color(0xFF7C3AED),
+    ),
+    'RECEIVED' => const StatusTone(
+      kind: StatusToneKind.received,
+      color: Color(0xFF0F766E),
+    ),
+    _ => StatusTone(
+      kind: StatusToneKind.neutral,
+      color: colorScheme.onSurface.withValues(alpha: 0.60),
+    ),
+  };
+}
 
-    if (normalized.contains('pending') ||
-        normalized.contains('submitted') ||
-        normalized.contains('waiting') ||
-        normalized.contains('processing')) {
-      return AppColors.warning;
-    }
+String normalizeStatus(String value) {
+  return value.trim().toUpperCase().replaceAll('-', '_').replaceAll(' ', '_');
+}
 
-    if (normalized.contains('rejected') ||
-        normalized.contains('failed') ||
-        normalized.contains('cancelled') ||
-        normalized.contains('canceled') ||
-        normalized.contains('error')) {
-      return AppColors.error;
-    }
-
-    return Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.60);
-  }
+String statusLabel(String value) {
+  return normalizeStatus(value).replaceAll('_', ' ');
 }
 
 class Timeline extends StatelessWidget {
@@ -118,9 +159,7 @@ class _TimelineRow extends StatelessWidget {
       children: [
         Column(
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
+            Container(
               width: 28,
               height: 28,
               decoration: BoxDecoration(
@@ -137,9 +176,7 @@ class _TimelineRow extends StatelessWidget {
               ),
             ),
             if (!isLast)
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
+              Container(
                 width: 1.5,
                 height: 34,
                 color: color.withValues(alpha: 0.28),

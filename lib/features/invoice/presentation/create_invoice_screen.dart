@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../auth/domain/permission_policy.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../../purchase_order/domain/purchase_order_entity.dart';
@@ -66,9 +67,7 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
     final poState = ref.watch(purchaseOrderControllerProvider);
     final invoiceState = ref.watch(invoiceControllerProvider);
     final session = ref.watch(authControllerProvider).session;
-    final canCreate =
-        session?.hasAnyPermission(['invoices.create', 'invoices.manage']) ??
-        false;
+    final canCreate = PermissionPolicy.canCreateInvoice(session);
     final order = poState.selectedOrder;
     final existingInvoice = _hasSource
         ? ref.watch(
@@ -150,6 +149,16 @@ class _CreateInvoiceScreenState extends ConsumerState<CreateInvoiceScreen> {
   }
 
   Future<void> _create(PurchaseOrder order) async {
+    if (!PermissionPolicy.canCreateInvoice(
+      ref.read(authControllerProvider).session,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     setState(() => _submitted = true);
     final invoiceDate = _parseDate(_invoiceDateController.text);
     final dueDate = _parseDate(_dueDateController.text);

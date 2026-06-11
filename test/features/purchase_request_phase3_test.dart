@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:procurement_management/app/theme/app_theme.dart';
 import 'package:procurement_management/core/sync/sync_status.dart';
 import 'package:procurement_management/core/sync/sync_summary.dart';
 import 'package:procurement_management/core/widgets/app_scaffold.dart';
+import 'package:procurement_management/features/auth/domain/auth_repository.dart';
 import 'package:procurement_management/features/auth/domain/auth_session.dart';
+import 'package:procurement_management/features/auth/presentation/auth_controller.dart';
 import 'package:procurement_management/features/dashboard/domain/app_menu_item.dart';
 import 'package:procurement_management/features/purchase_request/domain/purchase_request_entity.dart';
 import 'package:procurement_management/features/purchase_request/domain/purchase_request_repository.dart';
 import 'package:procurement_management/features/purchase_request/presentation/approval_history_screen.dart';
+import 'package:procurement_management/features/purchase_request/presentation/my_requests_screen.dart';
 import 'package:procurement_management/features/purchase_request/presentation/purchase_request_controller.dart';
 import 'package:procurement_management/features/purchase_request/presentation/purchase_request_details_screen.dart';
 import 'package:procurement_management/features/purchase_request/presentation/purchase_request_form_screen.dart';
@@ -22,7 +26,7 @@ const _session = AuthSession(
   companyId: 'company-1',
   companyName: 'Demo Company',
   roles: ['employee'],
-  permissions: ['purchase_requests.view'],
+  permissions: ['purchase_requests.view', 'purchase_requests.create'],
 );
 
 void main() {
@@ -85,6 +89,28 @@ void main() {
     expect(payload.totalAmount, 975);
   });
 
+  testWidgets('request filters render themed action buttons', (tester) async {
+    final authController = await _authController();
+    final repository = _FakePurchaseRequestRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith((ref) => authController),
+          purchaseRequestRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const MyRequestsScreen(showBottomNavigation: false),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('requestFilterApplyButton')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test(
     'controller create, update, submit, and cancel call backend methods',
     () async {
@@ -112,6 +138,7 @@ void main() {
   );
 
   testWidgets('edit form blocks non-draft requests', (tester) async {
+    final authController = await _authController();
     final repository = _FakePurchaseRequestRepository(
       detail: _request(
         id: 'submitted-1',
@@ -122,6 +149,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          authControllerProvider.overrideWith((ref) => authController),
           purchaseRequestRepositoryProvider.overrideWithValue(repository),
         ],
         child: const MaterialApp(
@@ -134,10 +162,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('Only draft requests can be edited'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('own draft requests'), findsOneWidget);
   });
 
   testWidgets('details actions follow request status rules', (tester) async {
@@ -210,10 +235,12 @@ Future<void> _pumpDetails(
   WidgetTester tester,
   PurchaseRequestEntity request,
 ) async {
+  final authController = await _authController();
   final repository = _FakePurchaseRequestRepository(detail: request);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        authControllerProvider.overrideWith((ref) => authController),
         purchaseRequestRepositoryProvider.overrideWithValue(repository),
       ],
       child: MaterialApp(
@@ -225,6 +252,14 @@ Future<void> _pumpDetails(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+Future<AuthController> _authController([AuthSession session = _session]) async {
+  final controller = AuthController(
+    _FakeAuthRepository(restoredSession: session),
+  );
+  await controller.restoreSession();
+  return controller;
 }
 
 PurchaseRequestPayload _payload() {
@@ -402,4 +437,31 @@ class _FakePurchaseRequestRepository implements PurchaseRequestRepository {
     required String actorId,
     required String comment,
   }) async {}
+}
+
+class _FakeAuthRepository implements AuthRepository {
+  _FakeAuthRepository({required this.restoredSession});
+
+  AuthSession? restoredSession;
+
+  @override
+  Future<AuthSession> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthSession> login({required String email, required String password}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> logout() async {
+    restoredSession = null;
+  }
+
+  @override
+  Future<AuthSession?> restoreSession() async => restoredSession;
 }

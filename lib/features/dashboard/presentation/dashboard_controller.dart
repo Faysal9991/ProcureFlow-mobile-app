@@ -41,7 +41,10 @@ class DashboardController extends StateNotifier<DashboardState> {
             if (card.isVisibleFor(session)) card,
         ],
         activities: summary.activities,
+        modules: visibleDashboardModules(session),
+        quickActions: visibleDashboardQuickActions(session),
         menuItems: visiblePhase2MenuItems(session),
+        accessProfile: DashboardAccessProfile.fromSession(session),
         unreadCount: unreadCount,
       );
     } on Exception catch (error) {

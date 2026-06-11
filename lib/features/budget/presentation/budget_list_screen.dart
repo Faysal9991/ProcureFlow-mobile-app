@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/status_chip.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../domain/budget_entity.dart';
 import 'budget_controller.dart';
 
@@ -40,15 +42,18 @@ class _BudgetListScreenState extends ConsumerState<BudgetListScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(budgetControllerProvider);
+    final session = ref.watch(authControllerProvider).session;
     return AppScaffold(
       title: 'Budgets',
       showBottomNavigation: widget.showBottomNavigation,
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('createBudgetButton'),
-        onPressed: () => context.push('/budgets/new'),
-        icon: const Icon(AppIcons.plus),
-        label: const Text('New Budget'),
-      ),
+      floatingActionButton: PermissionPolicy.canCreateBudget(session)
+          ? FloatingActionButton.extended(
+              key: const Key('createBudgetButton'),
+              onPressed: () => context.push('/budgets/new'),
+              icon: const Icon(AppIcons.plus),
+              label: const Text('New Budget'),
+            )
+          : null,
       child: RefreshIndicator(
         onRefresh: _load,
         child: AppScreenListView(

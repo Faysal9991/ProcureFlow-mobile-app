@@ -48,10 +48,12 @@ class SyncController extends StateNotifier<AsyncValue<SyncSummary?>> {
       final summary = await _ref
           .read(syncServiceProvider)
           .syncPendingPurchaseRequests(session.companyId);
+      if (!mounted) return summary;
       _ref.invalidate(pendingSyncCountProvider);
       state = AsyncData(summary);
       return summary;
     } on Exception catch (error, stackTrace) {
+      if (!mounted) return null;
       state = AsyncError(error, stackTrace);
       return null;
     }

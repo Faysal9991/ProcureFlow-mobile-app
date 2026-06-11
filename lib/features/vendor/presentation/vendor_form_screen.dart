@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/widgets/app_components.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../auth/domain/permission_policy.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../domain/vendor_entity.dart';
 import 'vendor_controller.dart';
@@ -140,6 +142,18 @@ class _VendorFormScreenState extends ConsumerState<VendorFormScreen> {
   }
 
   Future<void> _save() async {
+    final session = ref.read(authControllerProvider).session;
+    final allowed = widget.isEditMode
+        ? PermissionPolicy.canManageVendors(session)
+        : PermissionPolicy.canCreateVendor(session);
+    if (!allowed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission for this action.'),
+        ),
+      );
+      return;
+    }
     setState(() => _submitted = true);
     if (!_isValid) return;
     final controller = ref.read(vendorControllerProvider.notifier);
